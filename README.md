@@ -1,5 +1,9 @@
 # Pause the Decision
 
+Live website: https://nghiaphanminh.github.io/Spec-1/
+
+GitHub Pages automatically publishes `dist/` when website changes are pushed to `main`, through `.github/workflows/pages.yml`.
+
 A buildless p5.js installation. Serve `dist/` with an HTTP server; HTTPS is required for webcam use outside localhost.
 
 Frozen: detailed astronomical dial, DIFFERENCE blend, seven-octave noise, camera dithering, filtered static. Confirmed presence: rewind, two-octave domain-warped pastel flow, hidden message threshold, softened halftone, chime and ticks.
