@@ -1,23 +1,175 @@
-import {FilesetResolver,HandLandmarker} from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/vision_bundle.mjs';
-const canvas=document.querySelector('#art'),ctx=canvas.getContext('2d'),video=document.querySelector('#cam'),status=document.querySelector('#status');
-const sample=document.createElement('canvas');sample.width=160;sample.height=120;const sc=sample.getContext('2d',{willReadFrequently:true});
-const textMask=document.createElement('canvas'),tc=textMask.getContext('2d',{willReadFrequently:true});
-let pixels,mask,hand=null,calm=0,particles=[],targets=[],sentence=[],lastTarget=0,alive=true,stream,model,lastHand=0,segmentBusy=false,previousPalm=false;
-const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',rand=(a,b)=>a+Math.random()*(b-a),COUNT=6200;
-function buildSentence(){textMask.width=canvas.width;textMask.height=canvas.height;let size=Math.min(canvas.width*.08,canvas.height*.125,110);tc.font='700 '+size+'px Arial';tc.textAlign='center';tc.textBaseline='middle';tc.fillStyle='white';let lines=['No woman in the room?','Pause the decision.'];while(tc.measureText(lines[0]).width>canvas.width*.86){size*=.95;tc.font='700 '+size+'px Arial'}lines.forEach((line,i)=>tc.fillText(line,canvas.width*.5,canvas.height*.5+(i-.5)*size*1.5));const data=tc.getImageData(0,0,canvas.width,canvas.height).data;sentence=[];for(let y=0;y<canvas.height;y+=5)for(let x=0;x<canvas.width;x+=5)if(data[(x+y*canvas.width)*4+3]>140)sentence.push({x,y,l:255});}
-function resize(){const density=Math.min(devicePixelRatio||1,2);canvas.width=innerWidth;canvas.height=innerHeight;canvas.style.width='100vw';canvas.style.height='100vh';buildSentence()}resize();addEventListener('resize',resize);addEventListener('keydown',e=>{if(e.code==='Digit2'&&!e.repeat)parent.postMessage('switch-mode','*')});
-function open(h){const d=(a,b)=>Math.hypot(h[a].x-h[b].x,h[a].y-h[b].y);return [8,12,16,20].every(i=>d(i,0)>d(i-2,0)*1.1)}
-const segment=new SelfieSegmentation({locateFile:f=>'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/'+f});segment.setOptions({modelSelection:1});segment.onResults(r=>{sc.clearRect(0,0,160,120);sc.drawImage(r.segmentationMask,0,0,160,120);mask=sc.getImageData(0,0,160,120).data;sc.drawImage(video,0,0,160,120);pixels=sc.getImageData(0,0,160,120).data;segmentBusy=false});
-function makeTargets(){targets=[];if(!mask||!pixels)return;const scale=.76,w=canvas.width*scale,h=canvas.height*scale,ox=(canvas.width-w)/2,oy=(canvas.height-h)/2;for(let y=0;y<120;y++)for(let x=0;x<160;x++){let i=(x+y*160)*4;if(mask[i]>155){targets.push({x:ox+(1-x/160)*w,y:oy+y/120*h,l:(pixels[i]+pixels[i+1]+pixels[i+2])/3})}}}
-function bodyTarget(q){return targets[Math.min(targets.length-1,Math.floor(q.seed*targets.length))]}
-function birth(q){let a=bodyTarget(q);if(!a)return false;q.x=a.x+rand(-3,3);q.y=a.y+rand(-3,3);q.drop=false;q.age=rand(0,70);q.vx=0;q.vy=0;q.ch=chars[Math.floor(rand(0,chars.length))];return true}
-let prev=performance.now();function draw(now){if(!alive)return;let dt=Math.min((now-prev)/16.67,2);prev=now;let raised=!!hand;calm+=(Number(raised)-calm)*(1-Math.exp(-dt*.04));ctx.fillStyle='#000';ctx.fillRect(0,0,canvas.width,canvas.height);
-if(calm>.005){let g=ctx.createLinearGradient(0,0,canvas.width,canvas.height);g.addColorStop(0,'#ff859d');g.addColorStop(.35,'#f8d98d');g.addColorStop(.7,'#65c3b3');g.addColorStop(1,'#bca0db');ctx.globalAlpha=calm;ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height);ctx.globalAlpha=1}
-if(now-lastTarget>90){makeTargets();lastTarget=now}if(targets.length)while(particles.length<COUNT){let q={seed:Math.random(),ch:'A',x:0,y:0,vx:0,vy:0,drop:false,age:0,phase:rand(0,Math.PI*2)};birth(q);particles.push(q)}
-if(raised!==previousPalm){particles.forEach(q=>{q.fromX=q.x;q.fromY=q.y;q.flight=0;if(!raised)birth(q)});previousPalm=raised}
-for(let i=0;i<particles.length;i++){let q=particles[i],target=bodyTarget(q);if(raised&&sentence.length){let dest=sentence[Math.floor(i/particles.length*sentence.length)];q.flight=Math.min(1,(q.flight||0)+dt*.015);let f=q.flight,e=1-Math.pow(1-f,3),swirl=Math.sin(f*Math.PI)*Math.sin(q.phase+f*5)*80;q.x=(q.fromX??q.x)+(dest.x-(q.fromX??q.x))*e+swirl;q.y=(q.fromY??q.y)+(dest.y-(q.fromY??q.y))*e+Math.cos(q.phase+f*5)*Math.sin(f*Math.PI)*55;ctx.font='bold 7px monospace';ctx.fillStyle='#25333d';ctx.globalAlpha=.92;ctx.fillText(q.ch,q.x,q.y)}else if(target){q.age+=dt;if(!q.drop&&q.age>rand(75,150)){q.drop=true;let angle=rand(0,Math.PI*2),force=rand(1.2,4.5);q.vx=Math.cos(angle)*force;q.vy=Math.sin(angle)*force}
-if(q.drop){q.vx*=Math.pow(.99,dt);q.vy+=.115*dt;q.x+=q.vx*dt;q.y+=q.vy*dt;if(q.y>canvas.height+25||q.x< -30||q.x>canvas.width+30)birth(q)}else{let flowX=Math.sin(now*.0018+q.phase)*3.2,flowY=Math.cos(now*.0015+q.phase)*2.2;let ease=1-Math.exp(-dt*.22);q.x+=(target.x+flowX-q.x)*ease;q.y+=(target.y+flowY-q.y)*ease}
-ctx.font='bold 14px monospace';ctx.globalAlpha=q.drop?.75:.55+target.l/570;ctx.fillStyle='#f4f3ef';ctx.fillText(q.ch,q.x,q.y)} }
-ctx.globalAlpha=1;requestAnimationFrame(draw)}requestAnimationFrame(draw);
-async function capture(){if(!alive)return;if(video.readyState>=2){try{if(!segmentBusy){segmentBusy=true;await segment.send({image:video})}if(model&&performance.now()-lastHand>150){lastHand=performance.now();let h=model.detectForVideo(video,lastHand).landmarks?.[0];hand=h&&open(h)?h:null}}catch(e){segmentBusy=false;status.textContent='Tracking interrupted. Press 2 to return and reopen.'}}setTimeout(capture,65)}
-try{stream=await navigator.mediaDevices.getUserMedia({video:{width:480,height:360,facingMode:'user'},audio:false});video.srcObject=stream;await video.play();capture();const files=await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm');model=await HandLandmarker.createFromOptions(files,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'},runningMode:'VIDEO',numHands:1});status.textContent='';}catch(e){status.textContent='Allow camera access to form your portrait. Press 2 to return.'}addEventListener('pagehide',()=>{alive=false;stream?.getTracks().forEach(t=>t.stop());model?.close();segment.close()});
+import { FilesetResolver, HandLandmarker } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/vision_bundle.mjs';
+
+const canvas = document.querySelector('#art');
+const ctx = canvas.getContext('2d');
+const video = document.querySelector('#cam');
+const status = document.querySelector('#status');
+const sample = document.createElement('canvas');
+sample.width = 256;
+sample.height = 192;
+const sc = sample.getContext('2d', { willReadFrequently: true });
+const stencil = document.createElement('canvas');
+const st = stencil.getContext('2d', { willReadFrequently: true });
+const sky = document.createElement('canvas');
+sky.width = 180;
+sky.height = 120;
+const skyCtx = sky.getContext('2d');
+const rainbow = [[255,114,145],[255,167,123],[251,220,143],[188,218,152],[85,193,171],[123,178,205],[190,155,215]];
+const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+const cells = new Map();
+let tiles = [], drops = [], quote = [], mask, luminance, model, segment, stream;
+let width, height, tileSize, quoteWidth, quoteHeight, hand = null, handAt = 0;
+let calm = 0, anchor = { x: 0, y: 0 }, alive = true, raf, captureTimer;
+let prev = performance.now(), lastLayout = 0, lastNoise = 0, lastHand = 0, lastDrop = 0;
+const mix = (a,b,t) => a+(b-a)*t;
+const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
+const hash = (x,y) => { const a=Math.sin(x*127.1+y*311.7)*43758.5453; return a-Math.floor(a); };
+function noise(x,y) {
+  const ix=Math.floor(x), iy=Math.floor(y), fx=x-ix, fy=y-iy;
+  const u=fx*fx*(3-2*fx), v=fy*fy*(3-2*fy);
+  return mix(mix(hash(ix,iy),hash(ix+1,iy),u),mix(hash(ix,iy+1),hash(ix+1,iy+1),u),v);
+}
+function field(x,y,t) {
+  const a=noise(x*2.2+t*.23,y*2.2-t*.17);
+  const b=noise(x*2.2-t*.19+8,y*2.2+t*.21);
+  return noise(x*3+a*2.5,y*3+b*2.5+t*.18);
+}
+function colorAt(x,y,n) {
+  const k=clamp((y*.72+x*.1+(n-.5)*1.5)*6,0,5.999), i=Math.floor(k);
+  return rainbow[i].map((c,j)=>Math.round(mix(c,rainbow[i+1][j],k-i)));
+}
+function buildQuote() {
+  quoteWidth=Math.min(width*.86,1050);
+  const fontSize=Math.min(92,quoteWidth/12.7);
+  quoteHeight=fontSize*3.2;
+  stencil.width=Math.ceil(quoteWidth); stencil.height=Math.ceil(quoteHeight);
+  st.fillStyle='white'; st.textAlign='center'; st.textBaseline='middle';
+  st.font=`700 ${fontSize}px Arial`;
+  ['No woman in the room?','Pause the decision.'].forEach((line,i)=>st.fillText(line,quoteWidth/2,quoteHeight/2+(i-.5)*fontSize*1.45));
+  const data=st.getImageData(0,0,stencil.width,stencil.height).data;
+  quote=[];
+  const step=width<600?3:4;
+  for(let y=0;y<stencil.height;y+=step) for(let x=0;x<stencil.width;x+=step) {
+    if(data[(x+y*stencil.width)*4+3]>150) quote.push({x:x-quoteWidth/2,y:y-quoteHeight/2});
+  }
+}
+function resize() {
+  width=innerWidth; height=innerHeight; tileSize=width<600?17:21;
+  const dpr=Math.min(devicePixelRatio||1,2);
+  canvas.width=Math.round(width*dpr); canvas.height=Math.round(height*dpr);
+  canvas.style.width=width+'px'; canvas.style.height=height+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  buildQuote(); cells.clear(); tiles=[]; drops=[];
+  anchor={x:width/2,y:height/2};
+}
+resize(); addEventListener('resize',resize);
+addEventListener('keydown',e=>{if(e.code==='Digit2'&&!e.repeat)parent.postMessage('switch-mode',location.origin)});
+
+// Spatial cell keys preserve every separate foreground silhouette: no random target reassignment.
+function layout(now) {
+  if(!mask) return;
+  const scale=.82, vw=width*scale, vh=height*scale, ox=(width-vw)/2, oy=(height-vh)/2;
+  const seen=new Set();
+  for(let y=oy;y<oy+vh;y+=tileSize) for(let x=ox;x<ox+vw;x+=tileSize) {
+    const sx=clamp(Math.floor((1-(x+tileSize/2-ox)/vw)*256),0,255);
+    const sy=clamp(Math.floor((y+tileSize/2-oy)/vh*192),0,191), i=sx+sy*256;
+    if(mask[i*4]<150)continue;
+    const key=Math.round(x/tileSize)+','+Math.round(y/tileSize); seen.add(key);
+    let cell=cells.get(key);
+    if(!cell){cell={key,x:x+tileSize/2,y:y+tileSize/2,px:x+tileSize/2,py:y+tileSize/2,opacity:0,n:.5,l:.5,seed:hash(x,y),born:now};cells.set(key,cell)}
+    cell.x=x+tileSize/2; cell.y=y+tileSize/2; cell.l=luminance?.[i]??.5;
+    cell.seen=now;
+  }
+  for(const [key,cell] of cells) if(!seen.has(key)&&now-cell.seen>300)cells.delete(key);
+  tiles=Array.from(cells.values()).sort((a,b)=>a.y-b.y||a.x-b.x);
+}
+function renderSky(t) {
+  const image=skyCtx.createImageData(sky.width,sky.height);
+  for(let y=0;y<sky.height;y++)for(let x=0;x<sky.width;x++) {
+    const u=x/sky.width,v=y/sky.height,n=field(u,v,t),c=colorAt(u,v,n),i=(x+y*sky.width)*4;
+    image.data[i]=c[0];image.data[i+1]=c[1];image.data[i+2]=c[2];image.data[i+3]=255;
+  }
+  skyCtx.putImageData(image,0,0);
+}
+function palmOpen(h) {
+  const d=(a,b)=>Math.hypot(h[a].x-h[b].x,h[a].y-h[b].y);
+  return [8,12,16,20].every(i=>d(i,0)>d(i-2,0)*1.1);
+}
+function draw(now) {
+  if(!alive)return;
+  const dt=Math.min((now-prev)/1000,.05);prev=now;
+  const raised=hand&&now-handAt<650;
+  calm=mix(calm,raised?1:0,1-Math.exp(-dt*3));
+  if(now-lastLayout>85){layout(now);lastLayout=now}
+  if(raised){
+    const ids=[0,5,9,13,17];
+    const hx=ids.reduce((s,i)=>s+1-hand[i].x,0)/ids.length;
+    const hy=ids.reduce((s,i)=>s+hand[i].y,0)/ids.length;
+    const tx=clamp(width/2+(hx-.5)*width*.6,quoteWidth/2+12,width-quoteWidth/2-12);
+    const ty=clamp(height/2+(hy-.5)*height*.65,quoteHeight/2+20,height-quoteHeight/2-20);
+    anchor.x=mix(anchor.x,tx,1-Math.exp(-dt*6));anchor.y=mix(anchor.y,ty,1-Math.exp(-dt*6));
+  }
+  const t=now*.001;
+  if(now-lastNoise>65){if(calm>.005)renderSky(t);for(const q of tiles)q.n=field(q.x/width,q.y/height,t*1.8);lastNoise=now}
+  ctx.globalAlpha=1;ctx.fillStyle='#000';ctx.fillRect(0,0,width,height);
+  if(calm>.005){ctx.globalAlpha=calm;ctx.drawImage(sky,0,0,width,height);ctx.globalAlpha=1}
+  // Only a small minority shed. The fixed cell beneath replenishes immediately.
+  if(!raised&&tiles.length&&now-lastDrop>140&&drops.length<32){
+    const q=tiles[Math.floor(Math.random()*tiles.length)];
+    drops.push({x:q.x,y:q.y,vx:(Math.random()-.5)*24,vy:12+Math.random()*18,ch:alphabet[Math.floor(q.n*51)],life:0});lastDrop=now;
+  }
+  const total=Math.max(tiles.length,Math.ceil(quote.length/2));
+  for(let i=0;i<total;i++) {
+    const body=tiles[i%Math.max(1,tiles.length)];if(!body)continue;
+    const dest=quote[Math.floor(i/total*quote.length)];
+    const tx=dest?anchor.x+dest.x:body.x,ty=dest?anchor.y+dest.y:body.y;
+    const x=mix(body.x,tx,calm),y=mix(body.y,ty,calm);
+    // Settled cells stay exactly on their grid. Only contents and tone animate.
+    const n=body.n,shade=Math.round(32+clamp((n-.22)*1.8,0,1)*205);
+    const size=mix(tileSize-1,3.8,calm);
+    const bodyAlpha=i<tiles.length?1:calm;
+    ctx.globalAlpha=(1-calm)*bodyAlpha;
+    ctx.fillStyle=`rgb(${shade},${shade},${shade})`;
+    ctx.fillRect(x-size/2,y-size/2,size,size);
+    ctx.globalAlpha=bodyAlpha;
+    ctx.font=`600 ${mix(tileSize*.8,4.6,calm)}px monospace`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    const ink=shade>125?24:242;
+    ctx.fillStyle=`rgb(${Math.round(mix(ink,25,calm))},${Math.round(mix(ink,37,calm))},${Math.round(mix(ink,48,calm))})`;
+    const index=(Math.floor(n*230)+Math.floor(t*5)+Math.floor(body.seed*52))%52;
+    ctx.fillText(alphabet[index],x,y);
+  }
+  ctx.font=`600 ${tileSize*.8}px monospace`;ctx.textAlign='center';ctx.fillStyle='#ddd';
+  for(let i=drops.length-1;i>=0;i--){let q=drops[i];q.life+=dt;q.vy+=dt*85;q.x+=q.vx*dt;q.y+=q.vy*dt;ctx.globalAlpha=(1-calm)*Math.min(1,(5-q.life)*.8);ctx.fillText(q.ch,q.x,q.y);if(q.y>height+30||q.life>5)drops.splice(i,1)}
+  ctx.globalAlpha=1;raf=requestAnimationFrame(draw);
+}
+raf=requestAnimationFrame(draw);
+async function capture() {
+  if(!alive)return;
+  try{
+    if(video.readyState>=2){
+      if(model&&performance.now()-lastHand>140){lastHand=performance.now();const hands=model.detectForVideo(video,lastHand).landmarks;const h=hands.find(palmOpen);if(h){hand=h;handAt=performance.now()}else hand=null}
+      await segment.send({image:video});
+    }
+  }catch(error){status.textContent='Tracking interrupted. Press 2 to leave, then reopen.'}
+  if(alive)captureTimer=setTimeout(capture,65);
+}
+function dispose(){alive=false;cancelAnimationFrame(raf);clearTimeout(captureTimer);stream?.getTracks().forEach(t=>t.stop());model?.close();segment?.close()}
+addEventListener('pagehide',dispose);
+try {
+  stream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'user',frameRate:{ideal:20,max:24}},audio:false});
+  if(!alive){stream.getTracks().forEach(t=>t.stop())}else{
+    video.srcObject=stream;await video.play();
+    segment=new SelfieSegmentation({locateFile:f=>'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/'+f});
+    segment.setOptions({modelSelection:1});
+    segment.onResults(r=>{
+      if(!alive)return;
+      sc.clearRect(0,0,256,192);sc.drawImage(r.segmentationMask,0,0,256,192);mask=sc.getImageData(0,0,256,192).data;
+      sc.drawImage(video,0,0,256,192);const data=sc.getImageData(0,0,256,192).data;
+      luminance=new Float32Array(256*192);for(let i=0;i<luminance.length;i++)luminance[i]=(data[i*4]+data[i*4+1]+data[i*4+2])/765;
+    });
+    status.textContent='Loading palm tracking…';
+    const files=await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm');
+    if(alive){model=await HandLandmarker.createFromOptions(files,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'},runningMode:'VIDEO',numHands:2});status.textContent='';capture()}
+  }
+}catch(error){status.textContent=error.name==='NotAllowedError'?'Allow camera access, then press 2 to leave and reopen.':'Camera tracking could not load. Check your connection; press 2 to leave.';stream?.getTracks().forEach(t=>t.stop())}
