@@ -23,7 +23,8 @@ function renderThermal(t){const im=heatCtx.createImageData(160,120);for(let y=0;
 const rainbow = [[255,114,145],[255,167,123],[251,220,143],[188,218,152],[85,193,171],[123,178,205],[190,155,215]];
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 const cells = new Map();
-let tiles = [], drops = [], quote = [], mask, luminance, model, segment, stream;
+let tiles = [], drops = [], quote = [], mask, luminance, previousLuma, model, segment, stream;
+const outline=document.createElement("canvas"),oc=outline.getContext("2d");outline.width=256;outline.height=192;
 let width, height, tileSize, quoteWidth, quoteHeight, hand = null, handAt = 0;
 let calm = 0, anchor = { x: 0, y: 0 }, alive = true, raf, captureTimer;
 let prev = performance.now(), lastLayout = 0, lastNoise = 0, lastHand = 0, lastDrop = 0;
@@ -60,7 +61,7 @@ function buildQuote() {
   }
 }
 function resize() {
-  width=innerWidth; height=innerHeight; tileSize=width<600?17:21;
+  width=innerWidth; height=innerHeight; tileSize=width<600?14:18;
   const dpr=Math.min(devicePixelRatio||1,2);
   canvas.width=Math.round(width*dpr); canvas.height=Math.round(height*dpr);
   canvas.style.width=width+'px'; canvas.style.height=height+'px';
@@ -84,6 +85,9 @@ function layout(now) {
     let cell=cells.get(key);
     if(!cell){cell={key,x:x+tileSize/2,y:y+tileSize/2,px:x+tileSize/2,py:y+tileSize/2,opacity:0,n:.5,l:.5,seed:hash(x,y),born:now};cells.set(key,cell)}
     cell.x=x+tileSize/2; cell.y=y+tileSize/2; cell.l=luminance?.[i]??.5;
+    const motion=Math.abs(cell.l-(previousLuma?.[i]??cell.l));
+    cell.energy=Math.max((cell.energy??0)*.84,Math.min(1,motion*10));
+    cell.opacity=clamp((.7-cell.l)*1.1+(cell.energy||0)*.65,.03,.9);
     cell.seen=now;
   }
   for(const [key,cell] of cells) if(!seen.has(key)&&now-cell.seen>300)cells.delete(key);
@@ -116,38 +120,34 @@ function draw(now) {
     anchor.x=mix(anchor.x,tx,1-Math.exp(-dt*6));anchor.y=mix(anchor.y,ty,1-Math.exp(-dt*6));
   }
   const t=now*.001;
-  if(now-lastNoise>65){if(calm>.005)renderSky(t);if(mask)renderThermal(t);for(const q of tiles)q.n=field(q.x/width,q.y/height,t*1.8);lastNoise=now}
-  ctx.globalAlpha=1;ctx.fillStyle='#03030a';ctx.fillRect(0,0,width,height);
-  if(mask&&calm<.995){ctx.save();ctx.globalAlpha=(1-calm)*.65;ctx.filter='blur(38px)';ctx.drawImage(thermal,-15,-15,width+30,height+30);ctx.restore()}
-  if(calm>.005){ctx.globalAlpha=calm;ctx.drawImage(sky,0,0,width,height);ctx.globalAlpha=1}
+  if(now-lastNoise>65){for(const q of tiles)q.n=field(q.x/width,q.y/height,t*.5);lastNoise=now}
+  ctx.globalAlpha=1;ctx.fillStyle='#fff';ctx.fillRect(0,0,width,height);
+  ctx.drawImage(outline,width*.09,height*.09,width*.82,height*.82);
   // Only a small minority shed. The fixed cell beneath replenishes immediately.
-  if(!raised&&tiles.length&&now-lastDrop>140&&drops.length<32){
+  if(!raised&&tiles.length&&now-lastDrop>430&&drops.length<14){
     const q=tiles[Math.floor(Math.random()*tiles.length)];
-    drops.push({x:q.x,y:q.y,vx:(Math.random()-.5)*24,vy:12+Math.random()*18,ch:alphabet[Math.floor(q.n*51)],life:0});lastDrop=now;
+    drops.push({x:q.x,y:q.y,vx:0,vy:12+Math.random()*18,ch:alphabet[Math.floor(q.n*51)],life:0});lastDrop=now;
   }
   const total=Math.max(tiles.length,Math.ceil(quote.length/2));
   for(let i=0;i<total;i++) {
     const body=tiles[i%Math.max(1,tiles.length)];if(!body)continue;
     const dest=quote[Math.floor(i/total*quote.length)];
     const tx=dest?anchor.x+dest.x:body.x,ty=dest?anchor.y+dest.y:body.y;
-    const x=mix(body.x,tx,calm),y=mix(body.y,ty,calm);
+    const progress=clamp((calm-body.seed*.12)/.88,0,1),ease=progress*progress*(3-2*progress);
+    const x=mix(body.x,tx,ease),y=mix(body.y,ty,ease);
     // Settled cells stay exactly on their grid. Only contents and tone animate.
     const n=body.n,shade=Math.round(32+clamp((n-.22)*1.8,0,1)*205);
-    const size=mix(tileSize-1,3.8,calm);
-    const bodyAlpha=i<tiles.length?1:calm;
-    ctx.globalAlpha=(1-calm)*bodyAlpha;
-    const heat=heatColor(clamp(.18+body.l*.45+n*.45,0,1));ctx.fillStyle=`rgb(${heat[0]},${heat[1]},${heat[2]})`;
-    ctx.fillRect(x-size/2,y-size/2,size,size);
-    ctx.globalAlpha=bodyAlpha;
-    ctx.font=`600 ${mix(tileSize*.8,4.6,calm)}px monospace`;
-    ctx.textAlign='center';ctx.textBaseline='middle';
-    const ink=(heat[0]*.2126+heat[1]*.7152+heat[2]*.0722)>145?24:242;
-    ctx.fillStyle=`rgb(${Math.round(mix(ink,25,calm))},${Math.round(mix(ink,37,calm))},${Math.round(mix(ink,48,calm))})`;
-    const index=(Math.floor(n*230)+Math.floor(t*5)+Math.floor(body.seed*52))%52;
+    const bodyAlpha=i<tiles.length?(body.opacity??.5):0;
+    ctx.globalAlpha=mix(bodyAlpha,.95,calm);
+    ctx.font=`400 ${mix(tileSize*.68,4.8,calm)}px monospace`;
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#171717';
+    const animatedIndex=(Math.floor(n*30)+Math.floor(t*2)+Math.floor(body.seed*52))%52;
+    if(!raised||body.frozenIndex===undefined)body.frozenIndex=animatedIndex;
+    const index=raised?body.frozenIndex:animatedIndex;
     ctx.fillText(alphabet[index],x,y);
   }
-  ctx.font=`600 ${tileSize*.8}px monospace`;ctx.textAlign='center';ctx.fillStyle='#ddd';
-  for(let i=drops.length-1;i>=0;i--){let q=drops[i];q.life+=dt;q.vy+=dt*85;q.x+=q.vx*dt;q.y+=q.vy*dt;ctx.globalAlpha=(1-calm)*Math.min(1,(5-q.life)*.8);ctx.fillText(q.ch,q.x,q.y);if(q.y>height+30||q.life>5)drops.splice(i,1)}
+  ctx.font=`600 ${tileSize*.8}px monospace`;ctx.textAlign='center';ctx.fillStyle='#222';
+  for(let i=drops.length-1;i>=0;i--){let q=drops[i];q.life+=dt*(1-calm);q.vy+=dt*65*(1-calm);q.y+=q.vy*dt*(1-calm);ctx.globalAlpha=(1-calm)*Math.min(1,(5-q.life)*.8);ctx.fillText(q.ch,q.x,q.y);if(q.y>height+30||q.life>5)drops.splice(i,1)}
   ctx.globalAlpha=1;raf=requestAnimationFrame(draw);
 }
 raf=requestAnimationFrame(draw);
@@ -173,7 +173,13 @@ try {
       if(!alive)return;
       sc.clearRect(0,0,256,192);sc.drawImage(r.segmentationMask,0,0,256,192);mask=sc.getImageData(0,0,256,192).data;
       sc.drawImage(video,0,0,256,192);const data=sc.getImageData(0,0,256,192).data;
-      luminance=new Float32Array(256*192);for(let i=0;i<luminance.length;i++)luminance[i]=(data[i*4]+data[i*4+1]+data[i*4+2])/765;
+      previousLuma=luminance;luminance=new Float32Array(256*192);for(let i=0;i<luminance.length;i++)luminance[i]=(data[i*4]+data[i*4+1]+data[i*4+2])/765;
+      // Continuous contour paths from foreground and camera tonal levels, not skeleton joints.
+      oc.clearRect(0,0,256,192);oc.strokeStyle='#161616';oc.lineWidth=.48;oc.lineJoin='round';
+      const levels=[.25,.43,.62];
+      function contour(value,level){oc.beginPath();for(let y=1;y<190;y+=2)for(let x=1;x<254;x+=2){const corners=[[x,y],[x+2,y],[x+2,y+2],[x,y+2]],v=corners.map(([a,b])=>value(a+b*256));const hits=[];for(let e=0;e<4;e++){let j=(e+1)%4;if((v[e]>=level)!==(v[j]>=level)){const f=(level-v[e])/(v[j]-v[e]);hits.push([corners[e][0]+(corners[j][0]-corners[e][0])*f,corners[e][1]+(corners[j][1]-corners[e][1])*f])}}for(let e=0;e+1<hits.length;e+=2){oc.moveTo(256-hits[e][0],hits[e][1]);oc.lineTo(256-hits[e+1][0],hits[e+1][1])}}oc.stroke()}
+      contour(i=>mask[i*4]/255,.55);for(const level of levels)contour(i=>mask[i*4]>150?luminance[i]:1,level);
+
     });
     status.textContent='Loading palm tracking…';
     const files=await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm');
