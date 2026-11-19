@@ -1,9 +1,9 @@
 # Pause — Generative Clockwork
 
-Live website: https://nghiaphanminh.github.io/Spec-1/
+Live: https://nghiaphanminh.github.io/Spec-1/
 
-Press **Space** to pause or resume time. Press **1** to start or stop the camera. Hold an open, fingers-together palm to resume time. Camera hand detection runs on one frame every two seconds. It does not infer gender. Camera images stay on device.
+Space toggles time. 1 toggles the camera. An open palm resumes time until Space pauses it. Palm inference samples one independent image every two seconds; camera preview appears at the bottom right. Gender is not inferred.
 
-The p5.js artwork uses animated domain-warped noise rendered as changing letter glyphs. A low-resolution text field scales to the canvas for smooth, efficient motion. Fast black, white and grey interference slows into pastel when time resumes. Random outlines of clocks, numeral dials and gears use Difference blending.
+Smooth domain-warped grayscale transitions into coral, apricot, yellow, teal and lavender. Small glyphs are rendered directly at display resolution. One centered clock randomly uses Arabic, Roman, minimal analog, hours/minutes or hours/minutes/seconds styling on page load. Clock outlines use Difference blending at full contrast.
 
-GitHub Pages publishes `dist/` automatically after changes are pushed to `main`. MediaPipe Tasks Vision and its hand model are loaded on demand from jsDelivr and Google. Camera detection needs HTTPS, network access and the visitor's camera permission. p5.js 1.11.3 is bundled under its LGPL license.
+GitHub Pages publishes dist/ on main changes. p5.js is bundled; MediaPipe and the palm model load on demand. Camera requires HTTPS and permission. No camera images are recorded or uploaded.
