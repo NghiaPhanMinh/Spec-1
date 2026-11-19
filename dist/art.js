@@ -5,7 +5,7 @@ new p5(p=>{
  const palette=[[255,105,126],[255,155,117],[250,211,130],[213,218,143],[91,186,165],[111,175,183],[175,150,191]];
  function setupLayers(){cols=Math.ceil(p.width/10);rows=Math.ceil(p.height/12);fw=Math.min(360,Math.ceil(p.width/4));fh=Math.ceil(fw*p.height/p.width);values=new Float32Array(fw*fh);colors=new Float32Array(fw*fh*3);field=p.createImage(fw,fh);letters=p.createGraphics(p.width,p.height);letters.pixelDensity(Math.min(devicePixelRatio||1,2));letters.textFont('monospace');letters.textSize(7);letters.noStroke();}
  p.setup=()=>{p.createCanvas(innerWidth,innerHeight).parent('art');p.pixelDensity(Math.min(devicePixelRatio||1,2));p.frameRate(30);p.noiseDetail(2,.5);setupLayers();addEventListener('keydown',e=>{if(e.repeat)return;if(e.code==='Space'){e.preventDefault();room.running=!room.running}if(e.code==='Digit1'||e.code==='Numpad1'){e.preventDefault();window.toggleCamera?.()}})};
- p.windowResized=()=>{p.resizeCanvas(innerWidth,innerHeight);setupLayers()};
+ addEventListener('portrait-enter',()=>p.noLoop());addEventListener('portrait-exit',()=>p.loop());p.windowResized=()=>{p.resizeCanvas(innerWidth,innerHeight);setupLayers()};
  function renderField(){let c=room.calm;field.loadPixels();for(let y=0;y<fh;y++)for(let x=0;x<fw;x++){let u=x/fw,v=y/fh,a=p.noise(u*2+t*.12+phase,v*2-t*.1),b=p.noise(u*2+7-t*.09,v*2+t*.08),n=p.noise(u*2.6+a*2,v*2.6+b*2,t*.16);
  // Nested domain warp folds the frozen field into dense, sharp marble contours.
  let qx=p.noise(u*7+a*4+t*.2,v*7+b*4),qy=p.noise(u*7+b*4+13,v*7+a*4-t*.17),ridge=p.noise(u*9+qx*7,v*9+qy*7,t*.28),ripple=Math.sin((ridge*24+qx*3)*Math.PI),gray=Math.round(p.constrain(.5+ripple*.42+(n-.5)*.6,0,1)*9)/9;
