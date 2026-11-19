@@ -2,14 +2,8 @@
 
 Live website: https://nghiaphanminh.github.io/Spec-1/
 
-Full-screen p5.js generative artwork. GitHub Pages publishes `dist/` automatically when changes are pushed to `main`.
+Press **Space** to pause or resume time. Press **1** to start or stop the camera. Hold an open, fingers-together palm to resume time. Camera hand detection runs on one frame every two seconds. It does not infer gender. Camera images stay on device.
 
-- Fresh randomized arrangements of outlined clocks and gears on every load and regeneration.
-- White-heavy animated domain-warped monochrome halftone, transitioning to soft pastel flow when a face is present.
-- Pastel outlines in DIFFERENCE blend mode at 25% opacity (75% transparent).
-- Right swipe on canvas, Right Arrow, or shuffle icon regenerates palette and formation. With the camera enabled, a hand swipe toward the right side of the mirrored camera also regenerates.
-- Camera icon starts on-device MediaPipe face/hand tracking. **Any face resumes time; this does not identify gender.** No confirmation button or identity classification.
-- Sound icon enables synthesized noise, rewind chime, freeze cue and ticking. Gentle motion and fullscreen icons are available.
-- Small mirrored camera is foggy while frozen and clearer while running. No camera frames are saved or uploaded.
+The p5.js artwork uses animated domain-warped noise rendered as changing letter glyphs. A low-resolution text field scales to the canvas for smooth, efficient motion. Fast black, white and grey interference slows into pastel when time resumes. Random outlines of clocks, numeral dials and gears use Difference blending.
 
-Serve `dist/` over HTTPS or localhost. Dependencies: bundled p5.js 1.11.3 (LGPL), MediaPipe Tasks Vision 0.10.21 via jsDelivr, Google-hosted MediaPipe models. Camera/gesture tracking requires network access to load these assets and camera permission. Camera denial and model failure show a brief actionable error; the artwork and pointer swipe still work.
+GitHub Pages publishes `dist/` automatically after changes are pushed to `main`. MediaPipe Tasks Vision and its hand model are loaded on demand from jsDelivr and Google. Camera detection needs HTTPS, network access and the visitor's camera permission. p5.js 1.11.3 is bundled under its LGPL license.
