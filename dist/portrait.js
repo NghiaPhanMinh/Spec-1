@@ -1,3 +1,4 @@
+import {contours,smoothPath,peopleBounds} from './portrait-geometry.js?v=orbits-9';
 import { FilesetResolver, HandLandmarker } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/vision_bundle.mjs';
 
 const canvas = document.querySelector('#art');
@@ -13,7 +14,7 @@ const st = stencil.getContext('2d', { willReadFrequently: true });
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 const cells = new Map();
 let tiles = [], quote = [], mask, luminance, previousLuma, model, segment, stream;
-let ripple=null, wasRaised=false;
+let ripple=null, wasRaised=false,people=[],lastOrbit=0,orbitPaths=[];
 const outline=document.createElement("canvas"),oc=outline.getContext("2d");outline.width=512;outline.height=384;
 let width, height, tileSize, quoteWidth, quoteHeight, hand = null, handAt = 0;
 let calm = 0, anchor = { x: 0, y: 0 }, alive = true, raf, captureTimer;
@@ -63,8 +64,18 @@ function layout(now){if(!mask)return;for(const cell of tiles){
  cell.energy=Math.max(cell.energy*.82,Math.min(1,motion*9));
  // High illumination always clears the shading, even when a region moves.
  const darkness=clamp((.78-cell.l)/.65,0,1);
- cell.opacity=foreground?darkness*(.4+cell.energy*.6):0;
+ cell.inside=!!foreground;cell.opacity=foreground?Math.pow(darkness,.65)*(.82+cell.energy*.18):0;
 }}
+function updateOrbits(t){
+ orbitPaths=[];for(const cell of tiles)cell.ringAlpha=0;
+ for(const person of people){const cx=width*(.09+person.x*.82),cy=height*(.09+person.y*.82),rx=Math.max(60,person.w*width*.44),ry=Math.max(85,person.h*height*.43);
+ for(let ring=0;ring<5;ring++){let points=[];const scale=1.04+ring*.13;
+ for(let i=0;i<96;i++){const a=i/96*Math.PI*2,n=field(Math.cos(a)*.5+person.x+ring*.08,Math.sin(a)*.5+person.y,t*.25),warp=(n-.5)*(.14+ring*.035);points.push([cx+Math.cos(a)*(rx*scale+rx*warp),cy+Math.sin(a)*(ry*scale+ry*warp)])}
+ points=smoothPath(points,true,2);orbitPaths.push(points);
+ for(const [x,y] of points){const gx=Math.floor(x/tileSize),gy=Math.floor(y/tileSize);for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const px=(gx+dx+.5)*tileSize,py=(gy+dy+.5)*tileSize,cell=cells.get(px+','+py);if(cell){const strength=Math.max(0,1-Math.hypot(cell.x-x,cell.y-y)/(tileSize*1.5));cell.ringAlpha=Math.max(cell.ringAlpha,strength*.95)}}}
+ }}
+}
+function drawOrbits(){ctx.save();ctx.globalAlpha=(1-calm)*.55;ctx.strokeStyle='#333';ctx.lineWidth=.65;for(const points of orbitPaths){ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.stroke()}ctx.restore()}
 function palmOpen(h) {
   const d=(a,b)=>Math.hypot(h[a].x-h[b].x,h[a].y-h[b].y);
   return [8,12,16,20].every(i=>d(i,0)>d(i-2,0)*1.1);
@@ -88,15 +99,16 @@ function draw(now) {
   if(now-lastNoise>110){if(!raised)for(const cell of tiles)cell.n=field(cell.x/width,cell.y/height,t*.5);lastNoise=now}
   ctx.globalAlpha=1;ctx.fillStyle='#fff';ctx.fillRect(0,0,width,height);
   ctx.drawImage(outline,0,0,width,height);
-  ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`400 ${tileSize*.8}px monospace`;ctx.fillStyle='#171717';
+  if(now-lastOrbit>100){updateOrbits(t);lastOrbit=now}drawOrbits();
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`600 ${tileSize*.94}px monospace`;ctx.fillStyle='#000';
   const fade=1-Math.exp(-dt*2.8),freeze=clamp(calm*1.35,0,1);
   const radius=ripple?(now-ripple.start)*.55:0,maxRadius=Math.hypot(width,height);
   if(radius>maxRadius+tileSize*3)ripple=null;
   for(const cell of tiles){
    // A portrait letter fades where it is; sentence cells appear at these same addresses.
-   cell.bodyAlpha=mix(cell.bodyAlpha,cell.opacity*(1-freeze),fade);
-   cell.quoteAlpha=mix(cell.quoteAlpha,quoteCoverage(cell.x,cell.y)*calm,fade);
-   const alpha=Math.max(cell.bodyAlpha,cell.quoteAlpha*.96);
+   cell.bodyAlpha=cell.inside?mix(cell.bodyAlpha,cell.opacity*(1-freeze),fade):0;
+   cell.quoteAlpha=mix(cell.quoteAlpha,(quoteCoverage(cell.x,cell.y)>.25?1:0)*calm,fade);
+   const alpha=Math.max(cell.bodyAlpha,cell.quoteAlpha,(cell.ringAlpha||0)*(1-calm));
    if(alpha>.006){ctx.globalAlpha=alpha;const index=(Math.floor(cell.n*30)+Math.floor(cell.seed*52)+(!raised?Math.floor(t*2):0))%52;ctx.fillText(alphabet[index],cell.x,cell.y)}
    if(ripple){const distance=Math.hypot(cell.x-ripple.x,cell.y-ripple.y),band=Math.abs(distance-radius);if(band<tileSize*.85){ctx.globalAlpha=(1-band/(tileSize*.85))*.5*(1-radius/(maxRadius+tileSize*3));
     if(cell.seed>.55)ctx.fillText(alphabet[Math.floor(cell.seed*51)],cell.x,cell.y);
@@ -126,28 +138,14 @@ try {
     segment.setOptions({modelSelection:1});
     segment.onResults(r=>{
       if(!alive)return;
-      sc.clearRect(0,0,512,384);sc.drawImage(r.segmentationMask,0,0,512,384);mask=sc.getImageData(0,0,512,384).data;
-      sc.filter='blur(.7px)';sc.drawImage(video,0,0,512,384);sc.filter='none';const data=sc.getImageData(0,0,512,384).data;
+      sc.clearRect(0,0,512,384);sc.filter='blur(2px)';sc.drawImage(r.segmentationMask,0,0,512,384);sc.filter='none';mask=sc.getImageData(0,0,512,384).data;
+      sc.filter='blur(1.4px)';sc.drawImage(video,0,0,512,384);sc.filter='none';const data=sc.getImageData(0,0,512,384).data;
       previousLuma=luminance;luminance=new Float32Array(512*384);for(let i=0;i<luminance.length;i++)luminance[i]=(data[i*4]+data[i*4+1]+data[i*4+2])/765;
-      // Continuous contour paths from foreground and camera tonal levels, not skeleton joints.
-      oc.setTransform(1,0,0,1,0,0);oc.clearRect(0,0,outline.width,outline.height);const density=Math.min(devicePixelRatio||1,2);oc.setTransform(width*.82*density/512,0,0,height*.82*density/384,width*.09*density,height*.09*density);oc.strokeStyle='#161616';oc.lineWidth=.55;oc.lineJoin='round';
-      const levels=[.25,.43,.62];
-      function contour(value,level){
-       oc.beginPath();
-       for(let y=1;y<382;y++)for(let x=1;x<510;x++){
-        const id=x+y*512,a=value(id),b=value(id+1),c=value(id+513),d=value(id+512);
-        const bits=(a>=level?1:0)|(b>=level?2:0)|(c>=level?4:0)|(d>=level?8:0);
-        if(bits===0||bits===15)continue;
-        const hits=[];
-        if((a>=level)!==(b>=level))hits.push([x+(level-a)/(b-a),y]);
-        if((b>=level)!==(c>=level))hits.push([x+1,y+(level-b)/(c-b)]);
-        if((c>=level)!==(d>=level))hits.push([x+1-(level-c)/(d-c),y+1]);
-        if((d>=level)!==(a>=level))hits.push([x,y+1-(level-d)/(a-d)]);
-        for(let j=0;j+1<hits.length;j+=2){oc.moveTo(512-hits[j][0],hits[j][1]);oc.lineTo(512-hits[j+1][0],hits[j+1][1])}
-       }oc.stroke();
-      }
-
-      contour(i=>mask[i*4]/255,.55);for(const level of levels)contour(i=>mask[i*4]>150?luminance[i]:1,level);
+      people=peopleBounds(mask,512,384);
+      oc.setTransform(1,0,0,1,0,0);oc.clearRect(0,0,outline.width,outline.height);
+      const density=Math.min(devicePixelRatio||1,2);oc.setTransform(width*.82*density/512,0,0,height*.82*density/384,width*.09*density,height*.09*density);oc.strokeStyle='#171717';oc.lineWidth=.52;oc.lineJoin='round';oc.lineCap='round';
+      const paths=[...contours(i=>mask[i*4]/255,512,384,.55),...contours(i=>mask[i*4]>210?luminance[i]:NaN,512,384,.43)];
+      for(const path of paths){oc.beginPath();path.points.forEach(([x,y],i)=>{if(i===0)oc.moveTo(512-x,y);else oc.lineTo(512-x,y)});if(path.closed)oc.closePath();oc.stroke()}
 
     });
     status.textContent='Loading palm tracking…';
