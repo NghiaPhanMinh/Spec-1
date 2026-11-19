@@ -14,6 +14,12 @@ const sky = document.createElement('canvas');
 sky.width = 180;
 sky.height = 120;
 const skyCtx = sky.getContext('2d');
+const thermal = document.createElement('canvas'); thermal.width=160;thermal.height=120;
+const heatCtx=thermal.getContext('2d');
+const heatPalette=[[27,23,100],[67,51,184],[37,143,193],[66,207,165],[246,220,105],[255,119,97],[255,232,183]];
+function heatColor(value){const k=clamp(value,0,.999)*6,i=Math.floor(k);return heatPalette[i].map((c,j)=>Math.round(mix(c,heatPalette[i+1][j],k-i)))}
+function bodyHeat(u,v,n){const x=Math.floor((1-(u-.09)/.82)*256),y=Math.floor((v-.09)/.82*192);if(!mask||x<0||x>255||y<0||y>191)return {strength:0,heat:0};const id=x+y*256;return {strength:mask[id*4]/255,heat:clamp(.18+(luminance?.[id]??.4)*.45+n*.45,0,1)}}
+function renderThermal(t){const im=heatCtx.createImageData(160,120);for(let y=0;y<120;y++)for(let x=0;x<160;x++){let u=x/160,v=y/120,n=field(u,v,t*1.8),h=bodyHeat(u,v,n),c=heatColor(h.heat),i=(x+y*160)*4;im.data[i]=c[0];im.data[i+1]=c[1];im.data[i+2]=c[2];im.data[i+3]=h.strength*220}heatCtx.putImageData(im,0,0)}
 const rainbow = [[255,114,145],[255,167,123],[251,220,143],[188,218,152],[85,193,171],[123,178,205],[190,155,215]];
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 const cells = new Map();
@@ -86,7 +92,7 @@ function layout(now) {
 function renderSky(t) {
   const image=skyCtx.createImageData(sky.width,sky.height);
   for(let y=0;y<sky.height;y++)for(let x=0;x<sky.width;x++) {
-    const u=x/sky.width,v=y/sky.height,n=field(u,v,t),c=colorAt(u,v,n),i=(x+y*sky.width)*4;
+    const u=x/sky.width,v=y/sky.height,n=field(u,v,t),h=bodyHeat(u,v,n),c=colorAt(u,v,clamp(n+(h.heat-.4)*h.strength*.25,0,1)),i=(x+y*sky.width)*4;
     image.data[i]=c[0];image.data[i+1]=c[1];image.data[i+2]=c[2];image.data[i+3]=255;
   }
   skyCtx.putImageData(image,0,0);
@@ -110,8 +116,9 @@ function draw(now) {
     anchor.x=mix(anchor.x,tx,1-Math.exp(-dt*6));anchor.y=mix(anchor.y,ty,1-Math.exp(-dt*6));
   }
   const t=now*.001;
-  if(now-lastNoise>65){if(calm>.005)renderSky(t);for(const q of tiles)q.n=field(q.x/width,q.y/height,t*1.8);lastNoise=now}
-  ctx.globalAlpha=1;ctx.fillStyle='#000';ctx.fillRect(0,0,width,height);
+  if(now-lastNoise>65){if(calm>.005)renderSky(t);if(mask)renderThermal(t);for(const q of tiles)q.n=field(q.x/width,q.y/height,t*1.8);lastNoise=now}
+  ctx.globalAlpha=1;ctx.fillStyle='#03030a';ctx.fillRect(0,0,width,height);
+  if(mask&&calm<.995){ctx.save();ctx.globalAlpha=(1-calm)*.65;ctx.filter='blur(38px)';ctx.drawImage(thermal,-15,-15,width+30,height+30);ctx.restore()}
   if(calm>.005){ctx.globalAlpha=calm;ctx.drawImage(sky,0,0,width,height);ctx.globalAlpha=1}
   // Only a small minority shed. The fixed cell beneath replenishes immediately.
   if(!raised&&tiles.length&&now-lastDrop>140&&drops.length<32){
@@ -129,12 +136,12 @@ function draw(now) {
     const size=mix(tileSize-1,3.8,calm);
     const bodyAlpha=i<tiles.length?1:calm;
     ctx.globalAlpha=(1-calm)*bodyAlpha;
-    ctx.fillStyle=`rgb(${shade},${shade},${shade})`;
+    const heat=heatColor(clamp(.18+body.l*.45+n*.45,0,1));ctx.fillStyle=`rgb(${heat[0]},${heat[1]},${heat[2]})`;
     ctx.fillRect(x-size/2,y-size/2,size,size);
     ctx.globalAlpha=bodyAlpha;
     ctx.font=`600 ${mix(tileSize*.8,4.6,calm)}px monospace`;
     ctx.textAlign='center';ctx.textBaseline='middle';
-    const ink=shade>125?24:242;
+    const ink=(heat[0]*.2126+heat[1]*.7152+heat[2]*.0722)>145?24:242;
     ctx.fillStyle=`rgb(${Math.round(mix(ink,25,calm))},${Math.round(mix(ink,37,calm))},${Math.round(mix(ink,48,calm))})`;
     const index=(Math.floor(n*230)+Math.floor(t*5)+Math.floor(body.seed*52))%52;
     ctx.fillText(alphabet[index],x,y);
