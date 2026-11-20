@@ -1,3 +1,4 @@
+import {isStopPalm} from './stop-gesture.js?v=direction-14';
 import {contours} from './portrait-geometry.js?v=suit-11';
 import { FilesetResolver, HandLandmarker } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/vision_bundle.mjs';
 
@@ -12,7 +13,7 @@ const sc = sample.getContext('2d', { willReadFrequently: true });
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 const cells = new Map();
 let tiles = [], mask, luminance, previousLuma, model, segment, stream;
-let sourceCenter={x:0,y:0},transferSource={x:0,y:0},phraseTime=0;
+let sourceCenter={x:0,y:0},transferSource={x:0,y:0},phraseTime=0,handConfirmations=0,transferAxis=null,transferGeometry=null,bodyBounds=null,transferBounds=null;
 let previouslyRaised=false;const messageFonts=['Georgia','"Palatino Linotype",Georgia','"Times New Roman"','"Baskerville",Georgia','"Book Antiqua",Georgia'];let messageFont=messageFonts[0];
 const bodyLayer=document.createElement('canvas'),bc=bodyLayer.getContext('2d');
 const maskLayer=document.createElement('canvas'),mc=maskLayer.getContext('2d');maskLayer.width=512;maskLayer.height=384;
@@ -62,7 +63,7 @@ resize(); addEventListener('resize',resize);
 addEventListener('keydown',e=>{if(e.code==='Digit2'&&!e.repeat)parent.postMessage('switch-mode',location.origin)});
 
 // Only opacity and glyph content change. Coordinates never leave the screen grid.
-function layout(now){if(!mask)return;let sumX=0,sumY=0,count=0;for(const cell of tiles){
+function layout(now){if(!mask)return;let sumX=0,sumY=0,count=0,minX=width,maxX=0,minY=height,maxY=0;for(const cell of tiles){
  const u=(cell.x-width*.09)/(width*.82),v=(cell.y-height*.09)/(height*.82);
  const sx=clamp(Math.floor((1-u)*512),0,511),sy=clamp(Math.floor(v*384),0,383),inside=u>=0&&u<=1&&v>=0&&v<=1;
  const id=sx+sy*512,foreground=inside&&mask[id*4]>150;
@@ -71,46 +72,55 @@ function layout(now){if(!mask)return;let sumX=0,sumY=0,count=0;for(const cell of
  cell.energy=Math.max(cell.energy*.82,Math.min(1,motion*9));
  // High illumination always clears the shading, even when a region moves.
  const darkness=clamp((.78-cell.l)/.65,0,1);
- if(foreground){sumX+=cell.x;sumY+=cell.y;count++}cell.inside=!!foreground;cell.opacity=foreground?Math.pow(darkness,.65)*(.82+cell.energy*.18):0;
-}if(count)sourceCenter={x:sumX/count,y:sumY/count};}
-const messageOutline=document.createElement('canvas'),mo=messageOutline.getContext('2d');
+ if(foreground){sumX+=cell.x;sumY+=cell.y;count++;minX=Math.min(minX,cell.x);maxX=Math.max(maxX,cell.x);minY=Math.min(minY,cell.y);maxY=Math.max(maxY,cell.y)}cell.inside=!!foreground;cell.opacity=foreground?Math.pow(darkness,.65)*(.82+cell.energy*.18):0;
+}if(count){sourceCenter={x:sumX/count,y:sumY/count};bodyBounds={minX,maxX,minY,maxY}}}
+const messageOutline=document.createElement('canvas'),mo=messageOutline.getContext('2d');const messageReveal=document.createElement('canvas'),mr=messageReveal.getContext('2d');
 const messageMask=document.createElement('canvas'),messageCtx=messageMask.getContext('2d',{willReadFrequently:true});let messageData,messageLayout,messageKey='';
-function wrapText(text,font,maxWidth){ctx.font='italic 600 '+font+'px '+messageFont;const lines=[];let line='';for(const word of text.split(' ')){const trial=line?line+' '+word:word;if(line&&ctx.measureText(trial).width>maxWidth){lines.push(line);line=word}else line=trial}if(line)lines.push(line);return lines}
+function wrapText(text,font,maxWidth){ctx.font='italic 800 '+font+'px '+messageFont;const lines=[];let line='';for(const word of text.split(' ')){const trial=line?line+' '+word:word;if(line&&ctx.measureText(trial).width>maxWidth){lines.push(line);line=word}else line=trial}if(line)lines.push(line);return lines}
 function fitMessage(){const pad=24,available=Math.max(width*.46,2*Math.min(anchor.x-pad,width-pad-anchor.x));const maxWidth=Math.min(width*.76,width-pad*2,available);const key=Math.round(maxWidth/12)+','+width+','+height;
  if(key!==messageKey){let font=Math.min(88,width*.075,height*.12),lines;
   do{lines=wrapText('No woman in the room? Pause the decision.',font,maxWidth);if(lines.length*font*1.2<=height-pad*2)break;font*=.94}while(font>24);
-  ctx.font='italic 600 '+font+'px '+messageFont;const w=Math.ceil(Math.max(...lines.map(line=>ctx.measureText(line).width))+12),h=Math.ceil(lines.length*font*1.2+12);
-  messageMask.width=w;messageMask.height=h;messageCtx.font='italic 600 '+font+'px '+messageFont;messageCtx.textAlign='center';messageCtx.textBaseline='middle';messageCtx.fillStyle='#fff';lines.forEach((line,i)=>messageCtx.fillText(line,w/2,6+(i+.5)*font*1.2));
-  messageOutline.width=w;messageOutline.height=h;mo.font='italic 600 '+font+'px '+messageFont;mo.textAlign='center';mo.textBaseline='middle';mo.strokeStyle='#fff';mo.lineWidth=1.3;mo.lineJoin='round';lines.forEach((line,i)=>mo.strokeText(line,w/2,6+(i+.5)*font*1.2));messageData=messageCtx.getImageData(0,0,w,h).data;messageLayout={w,h,font,lines};messageKey=key;
+  ctx.font='italic 800 '+font+'px '+messageFont;const w=Math.ceil(Math.max(...lines.map(line=>ctx.measureText(line).width))+12),h=Math.ceil(lines.length*font*1.2+12);
+  messageMask.width=w;messageMask.height=h;messageCtx.font='italic 800 '+font+'px '+messageFont;messageCtx.textAlign='center';messageCtx.textBaseline='middle';messageCtx.fillStyle='#fff';lines.forEach((line,i)=>messageCtx.fillText(line,w/2,6+(i+.5)*font*1.2));
+  messageOutline.width=w;messageOutline.height=h;messageReveal.width=w;messageReveal.height=h;mo.font='italic 800 '+font+'px '+messageFont;mo.textAlign='center';mo.textBaseline='middle';mo.strokeStyle='#fff';mo.lineWidth=.65;mo.lineJoin='round';lines.forEach((line,i)=>mo.strokeText(line,w/2,6+(i+.5)*font*1.2));messageData=messageCtx.getImageData(0,0,w,h).data;messageLayout={w,h,font,lines};messageKey=key;
  }
  const m=messageLayout;m.x=clamp(anchor.x,m.w/2+pad,width-m.w/2-pad);m.y=clamp(anchor.y,m.h/2+pad,height-m.h/2-pad);return m;
 }
-function drawMessage(now){const reveal=smooth(.48,1,calm);if(reveal<.005)return;const m=fitMessage();ctx.save();ctx.globalAlpha=reveal;ctx.fillStyle=`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;ctx.font=`800 ${tileSize*.95}px monospace`;ctx.textAlign='center';ctx.textBaseline='middle';
- for(const cell of tiles){const y=Math.floor(cell.y-m.y+m.h/2),x=Math.floor(cell.x-m.x+m.w/2-typeFlow(y,now));if(x<0||y<0||x>=m.w||y>=m.h||messageData[(x+y*m.w)*4+3]<120)continue;ctx.fillText(alphabet[Math.floor(cell.seed*51)],cell.x,cell.y)}
+function drawMessage(now){const reveal=calm>0?1:0;if(reveal<.005)return;const m=fitMessage();ctx.save();ctx.globalAlpha=reveal;ctx.fillStyle=`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;ctx.font=`800 ${tileSize*.84}px monospace`;ctx.textAlign='center';ctx.textBaseline='middle';
+ for(const cell of tiles){const y=Math.floor(cell.y-m.y+m.h/2),x=Math.floor(cell.x-m.x+m.w/2-typeFlow(y,now));if(x<0||y<0||x>=m.w||y>=m.h||messageData[(x+y*m.w)*4+3]<120)continue;ctx.globalAlpha=sentenceVisibility(cell.x,cell.y);ctx.fillText(alphabet[Math.floor(cell.seed*51)],cell.x,cell.y)}
  mo.globalCompositeOperation='source-in';mo.fillStyle=ctx.fillStyle;mo.fillRect(0,0,m.w,m.h);mo.globalCompositeOperation='source-over';
- for(let y=0;y<m.h;y+=2){const h=Math.min(2,m.h-y);ctx.drawImage(messageOutline,0,y,m.w,h,m.x-m.w/2+typeFlow(y,now),m.y-m.h/2+y,m.w,h)}ctx.restore();
+ mr.globalCompositeOperation='source-over';mr.clearRect(0,0,m.w,m.h);mr.drawImage(messageOutline,0,0);
+ const ax=transferGeometry.axis,r=transferGeometry.sentence,cx=m.w/2,cy=m.h/2,mid=m.x*ax.x+m.y*ax.y;
+ const gradient=mr.createLinearGradient(cx+ax.x*(r.min-mid),cy+ax.y*(r.min-mid),cx+ax.x*(r.max-mid),cy+ax.y*(r.max-mid));
+ for(let i=0;i<=8;i++){const d=i/8;gradient.addColorStop(d,'rgba(0,0,0,'+smooth(.45+d*.3,.7+d*.3,calm)+')')}
+ mr.globalCompositeOperation='destination-in';mr.fillStyle=gradient;mr.fillRect(0,0,m.w,m.h);mr.globalCompositeOperation='source-over';ctx.globalAlpha=1;
+ for(let y=0;y<m.h;y+=2){const h=Math.min(2,m.h-y);ctx.drawImage(messageReveal,0,y,m.w,h,m.x-m.w/2+typeFlow(y,now),m.y-m.h/2+y,m.w,h)}ctx.restore();
 }
 function typeFlow(y,now){return Math.sin(y*.035+now*.0009)*2.4+Math.sin(y*.083-now*.0006)*.8}
 function smooth(a,b,v){const t=clamp((v-a)/(b-a),0,1);return t*t*(3-2*t)}
-function drawTransfer(){if(calm<=0||calm>=1)return;
- const start={...transferSource};if(Math.hypot(anchor.x-start.x,anchor.y-start.y)<tileSize*6)start.y=Math.min(height-tileSize,start.y+height*.2);const dx=anchor.x-start.x,dy=anchor.y-start.y,length=Math.max(70,Math.hypot(dx,dy)),ux=dx/(Math.hypot(dx,dy)||1),uy=dy/(Math.hypot(dx,dy)||1);
- const envelope=Math.sin(calm*Math.PI);ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`800 ${tileSize*.96}px monospace`;
- ctx.fillStyle=`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;
- for(const cell of tiles){const rx=cell.x-start.x,ry=cell.y-start.y,along=(rx*ux+ry*uy)/length,across=Math.abs(rx*uy-ry*ux),spread=mix(width*.17,Math.min(170,width*.2),clamp(along,0,1));if(along<-.1||along>1.15||across>spread)continue;
- const pulse=Math.exp(-Math.pow((along-calm)/.16,2))*envelope*(1-across/spread)*.85;if(pulse<.015)continue;
+function range(rect,axis){const v=[[rect.minX,rect.minY],[rect.maxX,rect.minY],[rect.minX,rect.maxY],[rect.maxX,rect.maxY]].map(([x,y])=>x*axis.x+y*axis.y);return {min:Math.min(...v),max:Math.max(...v)}}
+function prepareTransfer(){const m=fitMessage(),body=transferBounds||bodyBounds||{minX:width*.2,maxX:width*.8,minY:height*.3,maxY:height*.9};
+ if(!transferAxis){const ids=[0,5,9,13,17],targetX=hand?width*(.09+ids.reduce((sum,i)=>sum+1-hand[i].x,0)/5*.82):m.x,targetY=hand?height*(.09+ids.reduce((sum,i)=>sum+hand[i].y,0)/5*.82):m.y;let dx=targetX-transferSource.x,dy=targetY-transferSource.y;if(Math.hypot(dx,dy)<40)dy=-100;const l=Math.hypot(dx,dy);transferAxis={x:dx/l,y:dy/l}}
+ const axis=transferAxis,side={x:-axis.y,y:axis.x},sentence={minX:m.x-m.w/2,maxX:m.x+m.w/2,minY:m.y-m.h/2,maxY:m.y+m.h/2};
+ transferGeometry={axis,body:range(body,axis),sentence:range(sentence,axis),bodyCross:range(body,side),sentenceCross:range(sentence,side),side,m};
+}
+function cellProgress(x,y,r){const p=x*transferGeometry.axis.x+y*transferGeometry.axis.y;return clamp((p-r.min)/Math.max(1,r.max-r.min),0,1)}
+function bodyVisibility(x,y){if(!transferGeometry)return 1;const d=cellProgress(x,y,transferGeometry.body);return 1-smooth(.05+d*.35,.3+d*.35,calm)}
+function sentenceVisibility(x,y){if(!transferGeometry)return 0;const d=cellProgress(x,y,transferGeometry.sentence);return smooth(.45+d*.3,.7+d*.3,calm)}
+function drawTransfer(){if(calm<=0||calm>=1||!transferGeometry)return;
+ const g=transferGeometry,lo=Math.min(g.body.min,g.sentence.min),hi=Math.max(g.body.max,g.sentence.max),centerA=(g.body.min+g.body.max)/2,centerB=(g.sentence.min+g.sentence.max)/2;
+ ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`800 ${tileSize*.96}px monospace`;ctx.fillStyle=`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;
+ for(const cell of tiles){const p=cell.x*g.axis.x+cell.y*g.axis.y,cross=cell.x*g.side.x+cell.y*g.side.y,blend=clamp((p-centerA)/(centerB-centerA||1),0,1),crossMin=mix(g.bodyCross.min,g.sentenceCross.min,blend),crossMax=mix(g.bodyCross.max,g.sentenceCross.max,blend);if(p<lo||p>hi||cross<crossMin||cross>crossMax)continue;
+ const position=(p-lo)/(hi-lo||1),pulse=Math.exp(-Math.pow((position-calm)/.14,2))*Math.sin(calm*Math.PI)*.8;if(pulse<.012)continue;
  ctx.globalAlpha=pulse;const row=Math.floor(cell.y/tileSize),col=Math.floor(cell.x/tileSize),phrase=decisions[(row+Math.floor(phraseTime/5000))%decisions.length]+' ';ctx.fillText(phrase[col%phrase.length],cell.x,cell.y);
  }ctx.restore();
-}
-function palmOpen(h) {
-  const d=(a,b)=>Math.hypot(h[a].x-h[b].x,h[a].y-h[b].y);
-  return [8,12,16,20].every(i=>d(i,0)>d(i-2,0)*1.1);
 }
 function draw(now) {
   if(!alive)return;
   const elapsed=Math.max(0,(now-prev)/1000),dt=Math.min(elapsed,.05);prev=now;
   const raised=hand&&now-handAt<650;
-  calm=clamp(calm+(raised?elapsed:-elapsed)/2,0,1);
-  if(raised&&!previouslyRaised){messageFont=messageFonts[Math.floor(Math.random()*messageFonts.length)];messageKey='';transferSource={...sourceCenter};phraseTime=now;}previouslyRaised=!!raised;
+  calm=clamp(calm+(raised?elapsed:-elapsed)/3,0,1);
+  if(raised&&!previouslyRaised){messageFont=messageFonts[Math.floor(Math.random()*messageFonts.length)];messageKey='';transferSource={...sourceCenter};transferBounds=bodyBounds?{...bodyBounds}:null;transferAxis=null;phraseTime=now;}previouslyRaised=!!raised;
   if(now-lastLayout>85){layout(now);lastLayout=now}
   if(raised){
     const ids=[0,5,9,13,17];
@@ -120,6 +130,7 @@ function draw(now) {
     const ty=clamp(height*(.09+hy*.82),24,height-24);
     anchor.x=mix(anchor.x,tx,1-Math.exp(-dt*6));anchor.y=mix(anchor.y,ty,1-Math.exp(-dt*6));
   }
+  if(calm>0)prepareTransfer();
   const t=now*.001;
 
 
@@ -127,7 +138,7 @@ function draw(now) {
 
   bc.clearRect(0,0,width,height);bc.textAlign='center';bc.textBaseline='middle';bc.font=`800 ${tileSize*.96}px monospace`;
   for(const cell of tiles){if(!cell.inside)continue;
-   const faceFade=cell.y<sourceCenter.y-height*.08 ? .6 : 1;cell.bodyAlpha=cell.opacity*(1-smooth(0,.72,calm))*faceFade;if(cell.bodyAlpha<.005)continue;
+   const faceFade=cell.y<sourceCenter.y-height*.08 ? .6 : 1;cell.bodyAlpha=cell.opacity*bodyVisibility(cell.x,cell.y)*faceFade;if(cell.bodyAlpha<.005)continue;
    const row=Math.floor(cell.y/tileSize),col=Math.floor(cell.x/tileSize),phrase=decisions[(row+Math.floor((calm>0?phraseTime:now)/5000))%decisions.length]+'   ';
    bc.globalAlpha=cell.bodyAlpha;bc.fillStyle=calm<.005?'#0000FF':`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;bc.fillText(phrase[col%phrase.length],cell.x,cell.y);
   }
@@ -143,7 +154,7 @@ async function capture() {
   if(!alive)return;
   try{
     if(video.readyState>=2){
-      if(model&&performance.now()-lastHand>140){lastHand=performance.now();const hands=model.detectForVideo(video,lastHand).landmarks;const h=hands.find(palmOpen);if(h){hand=h;handAt=performance.now()}else if(performance.now()-handAt>300)hand=null}
+      if(model&&performance.now()-lastHand>140){lastHand=performance.now();const hands=model.detectForVideo(video,lastHand).landmarks;const h=hands.find(isStopPalm);handConfirmations=h?handConfirmations+1:0;if(h&&handConfirmations>=3){hand=h;handAt=performance.now()}else if(!h&&performance.now()-handAt>180)hand=null}
       await segment.send({image:video});
     }
   }catch(error){status.textContent='Tracking interrupted. Press 2 to leave, then reopen.'}
@@ -165,12 +176,12 @@ try {
       mc.clearRect(0,0,512,384);const alpha=mc.createImageData(512,384);for(let i=0;i<512*384;i++)alpha.data[i*4+3]=mask[i*4];mc.putImageData(alpha,0,0);
       oc.setTransform(1,0,0,1,0,0);oc.clearRect(0,0,outline.width,outline.height);
       const density=Math.min(devicePixelRatio||1,2);oc.setTransform(width*.82*density/512,0,0,height*.82*density/384,width*.09*density,height*.09*density);oc.strokeStyle='#171717';oc.lineWidth=.52;oc.lineJoin='round';oc.lineCap='round';
-      const paths=[...contours(i=>mask[i*4]/255,512,384,.55),...contours(i=>mask[i*4]>210?luminance[i]:NaN,512,384,.34),...contours(i=>mask[i*4]>210?luminance[i]:NaN,512,384,.58)];
+      const paths=[...contours(i=>mask[i*4]/255,512,384,.55),...contours(i=>mask[i*4]>210?luminance[i]:NaN,512,384,.34)];
       for(const path of paths){oc.beginPath();path.points.forEach(([x,y],i)=>{const dx=(field(x/512,y/384,performance.now()*.0001)-.5)*1.2,dy=(field(x/512+5,y/384,performance.now()*.0001)-.5)*1.2;if(i===0)oc.moveTo(512-x+dx,y+dy);else oc.lineTo(512-x+dx,y+dy)});if(path.closed)oc.closePath();oc.stroke()}
 
     });
     status.textContent='Loading palm tracking…';
     const files=await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm');
-    if(alive){model=await HandLandmarker.createFromOptions(files,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'},runningMode:'VIDEO',numHands:2});status.textContent='';capture()}
+    if(alive){model=await HandLandmarker.createFromOptions(files,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'},runningMode:'VIDEO',numHands:2,minHandDetectionConfidence:.75,minHandPresenceConfidence:.8,minTrackingConfidence:.75});status.textContent='';capture()}
   }
 }catch(error){status.textContent=error.name==='NotAllowedError'?'Allow camera access, then press 2 to leave and reopen.':'Camera tracking could not load. Check your connection; press 2 to leave.';stream?.getTracks().forEach(t=>t.stop())}
