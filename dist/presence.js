@@ -13,7 +13,7 @@
    if(id!==version)return;
    if(video.readyState>=2&&video.currentTime!==lastFrame&&now-lastInference>=85){
     lastFrame=video.currentTime;lastInference=now;
-    try{const result=model.detectForVideo(video,now);const open=result.landmarks.some(isStopPalm);confirmations=open?confirmations+1:0;room.running=open&&confirmations>=3}
+    try{const result=model.detectForVideo(video,now);const open=result.landmarks.some(isStopPalm);confirmations=open?confirmations+1:0;room.running=open&&confirmations>=2}
     catch{room.running=false;say('Hand tracking interrupted. Reload to retry.',true);stop();return}
    }
    schedule(id);
@@ -29,10 +29,10 @@
    if(id!==version){capture.getTracks().forEach(t=>t.stop());return}
    stream=capture;video.srcObject=stream;await video.play();document.body.classList.add('camera-on');say('Loading hand tracking…',true);
    if(!model){
-    ({isStopPalm}=await import('./stop-gesture.js?v=direction-14'));const vision=await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/vision_bundle.mjs');
+    ({isStopPalm}=await import('./stop-gesture.js?v=bounded-15'));const vision=await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/vision_bundle.mjs');
     const files=await vision.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm');
     if(id!==version)return;
-    const created=await vision.HandLandmarker.createFromOptions(files,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'},runningMode:'VIDEO',numHands:2,minHandDetectionConfidence:.75,minHandPresenceConfidence:.8,minTrackingConfidence:.75});
+    const created=await vision.HandLandmarker.createFromOptions(files,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'},runningMode:'VIDEO',numHands:2,minHandDetectionConfidence:.55,minHandPresenceConfidence:.6,minTrackingConfidence:.6});
     if(id!==version){created.close();return}model=created;
    }
    if(id!==version)return;

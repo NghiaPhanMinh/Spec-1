@@ -1,5 +1,4 @@
-import {isStopPalm} from './stop-gesture.js?v=direction-14';
-import {contours} from './portrait-geometry.js?v=suit-11';
+import {isStopPalm} from './stop-gesture.js?v=bounded-15';
 import { FilesetResolver, HandLandmarker } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/vision_bundle.mjs';
 
 const canvas = document.querySelector('#art');
@@ -14,6 +13,8 @@ const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 const cells = new Map();
 let tiles = [], mask, luminance, previousLuma, model, segment, stream;
 let sourceCenter={x:0,y:0},transferSource={x:0,y:0},phraseTime=0,handConfirmations=0,transferAxis=null,transferGeometry=null,bodyBounds=null,transferBounds=null;
+let transferCells=[],transferTargets=[],transferTargetKey='',contourBusy=false,lastContour=0;
+const contourWorker=new Worker(new URL('./contour-worker.js?v=bounded-15',import.meta.url),{type:'module'});
 let previouslyRaised=false;const messageFonts=['Georgia','"Palatino Linotype",Georgia','"Times New Roman"','"Baskerville",Georgia','"Book Antiqua",Georgia'];let messageFont=messageFonts[0];
 const bodyLayer=document.createElement('canvas'),bc=bodyLayer.getContext('2d');
 const maskLayer=document.createElement('canvas'),mc=maskLayer.getContext('2d');maskLayer.width=512;maskLayer.height=384;
@@ -33,6 +34,7 @@ const outlineTint=document.createElement("canvas"),ot=outlineTint.getContext("2d
 const outline=document.createElement("canvas"),oc=outline.getContext("2d");outline.width=512;outline.height=384;
 let width, height, tileSize, quoteWidth, quoteHeight, hand = null, handAt = 0;
 let calm = 0, anchor = { x: 0, y: 0 }, alive = true, raf, captureTimer;
+let lastDraw=0;
 let prev = performance.now(), lastLayout = 0, lastNoise = 0, lastHand = 0, lastDrop = 0;
 const mix = (a,b,t) => a+(b-a)*t;
 const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
@@ -107,20 +109,43 @@ function prepareTransfer(){const m=fitMessage(),body=transferBounds||bodyBounds|
 function cellProgress(x,y,r){const p=x*transferGeometry.axis.x+y*transferGeometry.axis.y;return clamp((p-r.min)/Math.max(1,r.max-r.min),0,1)}
 function bodyVisibility(x,y){if(!transferGeometry)return 1;const d=cellProgress(x,y,transferGeometry.body);return 1-smooth(.05+d*.35,.3+d*.35,calm)}
 function sentenceVisibility(x,y){if(!transferGeometry)return 0;const d=cellProgress(x,y,transferGeometry.sentence);return smooth(.45+d*.3,.7+d*.3,calm)}
-function drawTransfer(){if(calm<=0||calm>=1||!transferGeometry)return;
- const g=transferGeometry,lo=Math.min(g.body.min,g.sentence.min),hi=Math.max(g.body.max,g.sentence.max),centerA=(g.body.min+g.body.max)/2,centerB=(g.sentence.min+g.sentence.max)/2;
- ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`800 ${tileSize*.96}px monospace`;ctx.fillStyle=`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;
- for(const cell of tiles){const p=cell.x*g.axis.x+cell.y*g.axis.y,cross=cell.x*g.side.x+cell.y*g.side.y,blend=clamp((p-centerA)/(centerB-centerA||1),0,1),crossMin=mix(g.bodyCross.min,g.sentenceCross.min,blend),crossMax=mix(g.bodyCross.max,g.sentenceCross.max,blend);if(p<lo||p>hi||cross<crossMin||cross>crossMax)continue;
- const position=(p-lo)/(hi-lo||1),pulse=Math.exp(-Math.pow((position-calm)/.14,2))*Math.sin(calm*Math.PI)*.8;if(pulse<.012)continue;
- ctx.globalAlpha=pulse;const row=Math.floor(cell.y/tileSize),col=Math.floor(cell.x/tileSize),phrase=decisions[(row+Math.floor(phraseTime/5000))%decisions.length]+' ';ctx.fillText(phrase[col%phrase.length],cell.x,cell.y);
- }ctx.restore();
+function snapshotSources(){
+ const occupied=new Map();for(const cell of tiles)if(cell.inside)occupied.set(Math.floor(cell.x/tileSize)+','+Math.floor(cell.y/tileSize),cell);
+ const seen=new Set(),output=[];let component=0;
+ for(const [key,cell] of occupied){if(seen.has(key))continue;const queue=[cell];seen.add(key);const points=[];
+ for(let i=0;i<queue.length;i++){const q=queue[i],x=Math.floor(q.x/tileSize),y=Math.floor(q.y/tileSize);if(q.opacity>.035)points.push({x:q.x,y:q.y,seed:q.seed,opacity:q.opacity,component});for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,1],[-1,1],[1,-1]]){const id=(x+dx)+','+(y+dy),next=occupied.get(id);if(next&&!seen.has(id)){seen.add(id);queue.push(next)}}}
+ if(queue.length>=6){output.push(...points);component++}
+ }return output;
 }
+function updateTransferTargets(now){
+ const m=transferGeometry.m,key=messageKey+','+Math.round(m.x/tileSize)+','+Math.round(m.y/tileSize)+','+Math.floor(now/250);
+ if(key===transferTargetKey)return;transferTargetKey=key;transferTargets=[];
+ for(const cell of tiles){const y=Math.floor(cell.y-m.y+m.h/2),x=Math.floor(cell.x-m.x+m.w/2-typeFlow(y,now));if(x>=0&&y>=0&&x<m.w&&y<m.h&&messageData[(x+y*m.w)*4+3]>120)transferTargets.push(cell)}
+ const axis=transferGeometry.axis;transferTargets.sort((a,b)=>(a.x-b.x)*axis.x+(a.y-b.y)*axis.y);
+ if(!transferCells.length)transferCells=tiles.filter(c=>c.inside).map(c=>({x:c.x,y:c.y,seed:c.seed,opacity:c.opacity}));
+ // Every source is an actual foreground grid cell, including disconnected people.
+ transferCells.sort((a,b)=>a.component-b.component||(a.x-b.x)*axis.x+(a.y-b.y)*axis.y);
+ for(let start=0;start<transferCells.length;){let end=start+1;while(end<transferCells.length&&transferCells[end].component===transferCells[start].component)end++;for(let i=start;i<end;i++)transferCells[i].fraction=(i-start)/Math.max(1,end-start-1);start=end}
+}
+function drawTransfer(now){if(calm<=0||calm>=1||!transferGeometry)return;updateTransferTargets(now);if(!transferTargets.length)return;
+ const active=new Map(),progress=smooth(0,1,calm),alpha=Math.sin(calm*Math.PI)*.6;
+ for(let i=0;i<transferCells.length;i++){
+  const source=transferCells[i],target=transferTargets[Math.min(transferTargets.length-1,Math.floor(source.fraction*transferTargets.length))];
+  // Morph occupied grid addresses, never a bounding cone. Endpoints match both masks exactly.
+  const x=(Math.floor(mix(source.x,target.x,progress)/tileSize)+.5)*tileSize,y=(Math.floor(mix(source.y,target.y,progress)/tileSize)+.5)*tileSize;
+  const key=x+','+y,weight=Math.max(.15,source.opacity)*alpha;const old=active.get(key);if(!old||old.weight<weight)active.set(key,{x,y,weight,seed:source.seed});
+ }
+ ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`800 ${tileSize*.96}px monospace`;ctx.fillStyle=`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;
+ for(const cell of active.values()){ctx.globalAlpha=cell.weight;ctx.fillText(opinionGlyph(cell.x,cell.y,phraseTime),cell.x,cell.y)}ctx.restore();
+}
+function opinionGlyph(x,y,now){const epoch=Math.floor(now/2000),row=Math.floor(y/tileSize),col=Math.floor(x/tileSize),block=Math.floor(col/44);const pick=Math.floor(hash(row+epoch*17,block+epoch*31)*decisions.length),phrase=decisions[pick]+'   ';return phrase[(col%44)%phrase.length]}
 function draw(now) {
   if(!alive)return;
+  if(now-lastDraw<32){raf=requestAnimationFrame(draw);return}lastDraw=now;
   const elapsed=Math.max(0,(now-prev)/1000),dt=Math.min(elapsed,.05);prev=now;
   const raised=hand&&now-handAt<650;
   calm=clamp(calm+(raised?elapsed:-elapsed)/3,0,1);
-  if(raised&&!previouslyRaised){messageFont=messageFonts[Math.floor(Math.random()*messageFonts.length)];messageKey='';transferSource={...sourceCenter};transferBounds=bodyBounds?{...bodyBounds}:null;transferAxis=null;phraseTime=now;}previouslyRaised=!!raised;
+  if(raised&&!previouslyRaised){messageFont=messageFonts[Math.floor(Math.random()*messageFonts.length)];messageKey='';transferSource={...sourceCenter};transferBounds=bodyBounds?{...bodyBounds}:null;transferAxis=null;phraseTime=now;transferCells=snapshotSources();transferTargetKey='';}previouslyRaised=!!raised;
   if(now-lastLayout>85){layout(now);lastLayout=now}
   if(raised){
     const ids=[0,5,9,13,17];
@@ -139,14 +164,14 @@ function draw(now) {
   bc.clearRect(0,0,width,height);bc.textAlign='center';bc.textBaseline='middle';bc.font=`800 ${tileSize*.96}px monospace`;
   for(const cell of tiles){if(!cell.inside)continue;
    const faceFade=cell.y<sourceCenter.y-height*.08 ? .6 : 1;cell.bodyAlpha=cell.opacity*bodyVisibility(cell.x,cell.y)*faceFade;if(cell.bodyAlpha<.005)continue;
-   const row=Math.floor(cell.y/tileSize),col=Math.floor(cell.x/tileSize),phrase=decisions[(row+Math.floor((calm>0?phraseTime:now)/5000))%decisions.length]+'   ';
-   bc.globalAlpha=cell.bodyAlpha;bc.fillStyle=calm<.005?'#0000FF':`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;bc.fillText(phrase[col%phrase.length],cell.x,cell.y);
+   const glyph=opinionGlyph(cell.x,cell.y,calm>0?phraseTime:now);
+   bc.globalAlpha=cell.bodyAlpha;bc.fillStyle=calm<.005?'#0000FF':`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;bc.fillText(glyph,cell.x,cell.y);
   }
   bc.save();bc.globalAlpha=1;bc.globalCompositeOperation='destination-in';bc.translate(width*.91,height*.09);bc.scale(-1,1);bc.drawImage(maskLayer,0,0,width*.82,height*.82);bc.restore();
   ctx.drawImage(bodyLayer,0,0,width,height);
   ot.globalCompositeOperation='source-over';ot.clearRect(0,0,outlineTint.width,outlineTint.height);ot.drawImage(outline,0,0);
   ot.globalCompositeOperation='source-in';ot.fillStyle=`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;ot.fillRect(0,0,outlineTint.width,outlineTint.height);
-  ctx.drawImage(outlineTint,0,0,width,height);drawTransfer();drawMessage(now);
+  ctx.drawImage(outlineTint,0,0,width,height);drawTransfer(now);drawMessage(now);
   ctx.globalAlpha=1;raf=requestAnimationFrame(draw);
 }
 raf=requestAnimationFrame(draw);
@@ -154,13 +179,15 @@ async function capture() {
   if(!alive)return;
   try{
     if(video.readyState>=2){
-      if(model&&performance.now()-lastHand>140){lastHand=performance.now();const hands=model.detectForVideo(video,lastHand).landmarks;const h=hands.find(isStopPalm);handConfirmations=h?handConfirmations+1:0;if(h&&handConfirmations>=3){hand=h;handAt=performance.now()}else if(!h&&performance.now()-handAt>180)hand=null}
+      if(model&&performance.now()-lastHand>140){lastHand=performance.now();const hands=model.detectForVideo(video,lastHand).landmarks;const h=hands.find(isStopPalm);handConfirmations=h?handConfirmations+1:0;if(h&&handConfirmations>=2){hand=h;handAt=performance.now()}else if(!h&&performance.now()-handAt>350)hand=null}
       await segment.send({image:video});
     }
   }catch(error){status.textContent='Tracking interrupted. Press 2 to leave, then reopen.'}
   if(alive)captureTimer=setTimeout(capture,65);
 }
-function dispose(){alive=false;cancelAnimationFrame(raf);clearTimeout(captureTimer);stream?.getTracks().forEach(t=>t.stop());model?.close();segment?.close()}
+contourWorker.onmessage=({data:paths})=>{contourBusy=false;if(!alive)return;oc.setTransform(1,0,0,1,0,0);oc.clearRect(0,0,outline.width,outline.height);const density=Math.min(devicePixelRatio||1,2);oc.setTransform(width*.82*density/512,0,0,height*.82*density/384,width*.09*density,height*.09*density);oc.strokeStyle='#171717';oc.lineWidth=.52;oc.lineJoin='round';oc.lineCap='round';const t=performance.now()*.0001;for(const path of paths){oc.beginPath();path.points.forEach(([x,y],i)=>{const dx=Math.sin(x*.018+y*.012+t)*.4,dy=Math.sin(y*.018-x*.012+t)*.4;i?oc.lineTo(512-x+dx,y+dy):oc.moveTo(512-x+dx,y+dy)});if(path.closed)oc.closePath();oc.stroke()}};
+contourWorker.onerror=()=>{contourBusy=false;status.textContent='Outline worker failed. Reload to retry.'};
+function dispose(){alive=false;contourWorker.terminate();cancelAnimationFrame(raf);clearTimeout(captureTimer);stream?.getTracks().forEach(t=>t.stop());model?.close();segment?.close()}
 addEventListener('pagehide',dispose);
 try {
   stream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'user',frameRate:{ideal:20,max:24}},audio:false});
@@ -174,14 +201,11 @@ try {
       sc.filter='blur(1.4px)';sc.drawImage(video,0,0,512,384);sc.filter='none';const data=sc.getImageData(0,0,512,384).data;
       previousLuma=luminance;luminance=new Float32Array(512*384);for(let i=0;i<luminance.length;i++)luminance[i]=(data[i*4]+data[i*4+1]+data[i*4+2])/765;
       mc.clearRect(0,0,512,384);const alpha=mc.createImageData(512,384);for(let i=0;i<512*384;i++)alpha.data[i*4+3]=mask[i*4];mc.putImageData(alpha,0,0);
-      oc.setTransform(1,0,0,1,0,0);oc.clearRect(0,0,outline.width,outline.height);
-      const density=Math.min(devicePixelRatio||1,2);oc.setTransform(width*.82*density/512,0,0,height*.82*density/384,width*.09*density,height*.09*density);oc.strokeStyle='#171717';oc.lineWidth=.52;oc.lineJoin='round';oc.lineCap='round';
-      const paths=[...contours(i=>mask[i*4]/255,512,384,.55),...contours(i=>mask[i*4]>210?luminance[i]:NaN,512,384,.34)];
-      for(const path of paths){oc.beginPath();path.points.forEach(([x,y],i)=>{const dx=(field(x/512,y/384,performance.now()*.0001)-.5)*1.2,dy=(field(x/512+5,y/384,performance.now()*.0001)-.5)*1.2;if(i===0)oc.moveTo(512-x+dx,y+dy);else oc.lineTo(512-x+dx,y+dy)});if(path.closed)oc.closePath();oc.stroke()}
+      if(!contourBusy&&performance.now()-lastContour>180){contourBusy=true;lastContour=performance.now();contourWorker.postMessage({mask,luminance})}
 
     });
     status.textContent='Loading palm tracking…';
     const files=await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm');
-    if(alive){model=await HandLandmarker.createFromOptions(files,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'},runningMode:'VIDEO',numHands:2,minHandDetectionConfidence:.75,minHandPresenceConfidence:.8,minTrackingConfidence:.75});status.textContent='';capture()}
+    if(alive){model=await HandLandmarker.createFromOptions(files,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'},runningMode:'VIDEO',numHands:2,minHandDetectionConfidence:.55,minHandPresenceConfidence:.6,minTrackingConfidence:.6});status.textContent='';capture()}
   }
 }catch(error){status.textContent=error.name==='NotAllowedError'?'Allow camera access, then press 2 to leave and reopen.':'Camera tracking could not load. Check your connection; press 2 to leave.';stream?.getTracks().forEach(t=>t.stop())}
