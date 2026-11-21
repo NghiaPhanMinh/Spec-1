@@ -13,7 +13,7 @@ const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 const cells = new Map();
 let tiles = [], mask, luminance, previousLuma, model, segment, stream;
 let sourceCenter={x:0,y:0},transferSource={x:0,y:0},phraseTime=0,handConfirmations=0,transferAxis=null,transferGeometry=null,bodyBounds=null,transferBounds=null;
-let transferCells=[],transferTargets=[],transferTargetKey='',contourBusy=false,lastContour=0;
+let transferCells=[],transferTargets=[],transferRoutes=new Map(),transferTargetKey='',contourBusy=false,lastContour=0;
 const contourWorker=new Worker(new URL('./contour-worker.js?v=bounded-15',import.meta.url),{type:'module'});
 let previouslyRaised=false;const messageFonts=['Georgia','"Palatino Linotype",Georgia','"Times New Roman"','"Baskerville",Georgia','"Book Antiqua",Georgia'];let messageFont=messageFonts[0];
 const bodyLayer=document.createElement('canvas'),bc=bodyLayer.getContext('2d');
@@ -118,7 +118,7 @@ function snapshotSources(){
  }return output;
 }
 function updateTransferTargets(now){
- const m=transferGeometry.m,key=messageKey+','+Math.round(m.x/tileSize)+','+Math.round(m.y/tileSize)+','+Math.floor(now/250);
+ const m=transferGeometry.m,key=messageKey+','+Math.round(m.x/tileSize)+','+Math.round(m.y/tileSize);
  if(key===transferTargetKey)return;transferTargetKey=key;transferTargets=[];
  for(const cell of tiles){const y=Math.floor(cell.y-m.y+m.h/2),x=Math.floor(cell.x-m.x+m.w/2-typeFlow(y,now));if(x>=0&&y>=0&&x<m.w&&y<m.h&&messageData[(x+y*m.w)*4+3]>120)transferTargets.push(cell)}
  const axis=transferGeometry.axis;transferTargets.sort((a,b)=>(a.x-b.x)*axis.x+(a.y-b.y)*axis.y);
@@ -126,17 +126,25 @@ function updateTransferTargets(now){
  // Every source is an actual foreground grid cell, including disconnected people.
  transferCells.sort((a,b)=>a.component-b.component||(a.x-b.x)*axis.x+(a.y-b.y)*axis.y);
  for(let start=0;start<transferCells.length;){let end=start+1;while(end<transferCells.length&&transferCells[end].component===transferCells[start].component)end++;for(let i=start;i<end;i++)transferCells[i].fraction=(i-start)/Math.max(1,end-start-1);start=end}
+ buildGridRoutes();
 }
-function drawTransfer(now){if(calm<=0||calm>=1||!transferGeometry)return;updateTransferTargets(now);if(!transferTargets.length)return;
- const active=new Map(),progress=smooth(0,1,calm),alpha=Math.sin(calm*Math.PI)*.6;
- for(let i=0;i<transferCells.length;i++){
-  const source=transferCells[i],target=transferTargets[Math.min(transferTargets.length-1,Math.floor(source.fraction*transferTargets.length))];
-  // Morph occupied grid addresses, never a bounding cone. Endpoints match both masks exactly.
-  const x=(Math.floor(mix(source.x,target.x,progress)/tileSize)+.5)*tileSize,y=(Math.floor(mix(source.y,target.y,progress)/tileSize)+.5)*tileSize;
-  const key=x+','+y,weight=Math.max(.15,source.opacity)*alpha;const old=active.get(key);if(!old||old.weight<weight)active.set(key,{x,y,weight,seed:source.seed});
+// Prepare a stationary sequence of grid addresses once. No glyph has a moving position.
+function buildGridRoutes(){
+ transferRoutes=new Map();if(!transferTargets.length)return;
+ const add=(x,y,phase,weight)=>{const key=x+','+y;let route=transferRoutes.get(key);if(!route){route={phaseSum:0,weight:0};transferRoutes.set(key,route)}route.phaseSum+=phase*weight;route.weight+=weight};
+ for(const source of transferCells){const target=transferTargets[Math.min(transferTargets.length-1,Math.floor(source.fraction*transferTargets.length))];
+  let x=Math.floor(source.x/tileSize),y=Math.floor(source.y/tileSize);const tx=Math.floor(target.x/tileSize),ty=Math.floor(target.y/tileSize),dx=Math.abs(tx-x),dy=Math.abs(ty-y),sx=x<tx?1:-1,sy=y<ty?1:-1,total=Math.max(dx,dy,1);let error=dx-dy,step=0;
+  while(true){add(x,y,.1+.8*step/total,Math.max(.15,source.opacity));if(x===tx&&y===ty)break;const e=error*2;if(e> -dy){error-=dy;x+=sx}if(e<dx){error+=dx;y+=sy}step++}
  }
+ for(const route of transferRoutes.values())route.phase=route.phaseSum/route.weight;
+}
+function drawTransfer(now){if(calm<=0||calm>=1||!transferGeometry)return;updateTransferTargets(now);
  ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`800 ${tileSize*.96}px monospace`;ctx.fillStyle=`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;
- for(const cell of active.values()){ctx.globalAlpha=cell.weight;ctx.fillText(opinionGlyph(cell.x,cell.y,phraseTime),cell.x,cell.y)}ctx.restore();
+ for(const cell of tiles){const route=transferRoutes.get(Math.floor(cell.x/tileSize)+','+Math.floor(cell.y/tileSize));if(!route)continue;
+  // Adjacent cells light up and fade in order. Each cell always draws its own fixed glyph.
+  const opacity=Math.exp(-Math.pow((calm-route.phase)/.085,2))*Math.sin(Math.PI*calm)*.72;
+  if(opacity<.012)continue;ctx.globalAlpha=opacity;ctx.fillText(opinionGlyph(cell.x,cell.y,phraseTime),cell.x,cell.y);
+ }ctx.restore();
 }
 function opinionGlyph(x,y,now){const epoch=Math.floor(now/2000),row=Math.floor(y/tileSize),col=Math.floor(x/tileSize),block=Math.floor(col/44);const pick=Math.floor(hash(row+epoch*17,block+epoch*31)*decisions.length),phrase=decisions[pick]+'   ';return phrase[(col%44)%phrase.length]}
 function draw(now) {

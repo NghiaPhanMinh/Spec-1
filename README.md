@@ -13,3 +13,5 @@ Open-hand validation allows joined fingers and a tucked thumb while requiring a 
 Contour calculation runs in a module Worker; drawing is capped at 30fps at full display pixel density. Worker contour jobs are limited to roughly 5fps, while segmentation and palm inference continue. No frames are uploaded, stored or recorded. Camera inference and rendering performance depend on the device and lighting. HTTPS, permission and network access to load MediaPipe models are required.
 
 GitHub Pages publishes dist/ after main pushes. p5.js is bundled under LGPL.
+
+Correction: transfer footprints no longer interpolate or move between the body and sentence. A route of fixed grid addresses is prepared for each masked source-to-sentence assignment. Each cell retains its own opinion glyph and location; a narrow opacity pulse visits neighboring cells in order. Reverse uses the same route backward. The three-second directional body and sentence reveal remains. Route maps rebuild only when the sentence moves to a different grid location or wraps.
