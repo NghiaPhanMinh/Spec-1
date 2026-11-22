@@ -6,20 +6,21 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="A question of power. An interactive camera artwork for SDG 5 — Gender Equality.">
   <title>A Question of Power — Phan Minh Nghia</title>
-  <link rel="stylesheet" href="folder.css?v=folders-17">
-  <script defer src="modes.js?v=folders-17"></script>
+  <link rel="stylesheet" href="folder.css?v=gridfolder-18">
+  <script defer src="modes.js?v=gridfolder-18"></script>
 </head>
 <body>
+  <canvas id="site-grid" aria-hidden="true"></canvas>
   <header class="folder-bar">
     <div class="folder-rule rule-one" aria-hidden="true"></div>
-    <div class="folder-rule rule-two" aria-hidden="true"></div>
+    <div class="folder-base" aria-hidden="true"></div>
     <nav class="folder-tabs" role="tablist" aria-label="Project documents">
       <button id="home-tab" class="folder-tab selected" type="button" role="tab" aria-selected="true" aria-controls="home-panel" tabindex="0" data-panel="home">
-        <svg aria-hidden="true" viewBox="0 0 168 60" preserveAspectRatio="none"><path class="tab-fill" d="M0 60L16 10Q19 4 25 4H143Q149 4 152 10L168 60Z"/><path class="tab-edge" d="M0 60L16 10Q19 4 25 4H143Q149 4 152 10L168 60"/></svg>
+        <svg aria-hidden="true" viewBox="0 0 168 60" preserveAspectRatio="none"><path class="tab-fill" d="M0 60C7 60 9 51 12 40L19 16C22 6 27 4 38 4H130C141 4 146 6 149 16L156 40C159 51 161 60 168 60Z"/><path class="tab-edge" d="M0 60C7 60 9 51 12 40L19 16C22 6 27 4 38 4H130C141 4 146 6 149 16L156 40C159 51 161 60 168 60"/></svg>
         <span>Home</span>
       </button>
       <button id="info-tab" class="folder-tab" type="button" role="tab" aria-selected="false" aria-controls="info-panel" tabindex="-1" data-panel="info">
-        <svg aria-hidden="true" viewBox="0 0 168 60" preserveAspectRatio="none"><path class="tab-fill" d="M0 60L16 10Q19 4 25 4H143Q149 4 152 10L168 60Z"/><path class="tab-edge" d="M0 60L16 10Q19 4 25 4H143Q149 4 152 10L168 60"/></svg>
+        <svg aria-hidden="true" viewBox="0 0 168 60" preserveAspectRatio="none"><path class="tab-fill" d="M0 60C7 60 9 51 12 40L19 16C22 6 27 4 38 4H130C141 4 146 6 149 16L156 40C159 51 161 60 168 60Z"/><path class="tab-edge" d="M0 60C7 60 9 51 12 40L19 16C22 6 27 4 38 4H130C141 4 146 6 149 16L156 40C159 51 161 60 168 60"/></svg>
         <span>Info</span>
       </button>
     </nav>
@@ -42,7 +43,8 @@
     </section>
 
     <section id="info-panel" class="info-page" role="tabpanel" aria-labelledby="info-tab" hidden>
-      <div class="document-column">
+      <button id="customize-toggle" class="customize-toggle" type="button" aria-expanded="false" aria-controls="customize-panel">Customize</button>
+      <div class="document-column" data-document>
         <span class="code-tag">&lt;body&gt;</span>
         <p>Your Name: Phan Minh Nghia - S4176100</p>
         <p>Your Group Name: Tên nhóm là gì đây?</p>
@@ -60,7 +62,7 @@
         <p>Complete affiliation: RMIT University Vietnam, Saigon South Campus, School of Communications and Design, Digital Media Program</p>
         <span class="code-tag">&lt;/body&gt;</span>
       </div>
-      <div class="document-column">
+      <div class="document-column" data-document>
         <span class="code-tag">&lt;body&gt;</span>
         <p>Current date: <time id="current-date" datetime="2026-11-22">22 November 2026</time></p>
         <p>Complete SDG: SDG 5 - Gender Equality -<br><a href="https://sdgs.un.org/goals/goal5" target="_blank" rel="noopener noreferrer">Achieve gender equality and empower all women and girls.</a></p>
@@ -74,5 +76,7 @@
       </div>
     </section>
   </main>
+  <script defer src="customize.js?v=gridfolder-18"></script>
+  <script defer src="site-grid.js?v=gridfolder-18"></script>
 </body>
 </html>
