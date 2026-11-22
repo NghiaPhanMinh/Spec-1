@@ -1,0 +1,4 @@
+// Whole-width paths keep tab and folder rules connected.
+(()=>{const tabs=[...document.querySelectorAll('.folder-tab')];
+function draw(){const w=document.documentElement.clientWidth;for(const tab of tabs){const svg=tab.querySelector('svg'),selected=tab.classList.contains('selected'),x=tab.offsetLeft,b=selected?64:49,t=selected?5:13,r=tab.offsetWidth;const d=(x===0?`M 2 ${b}`:`M 0 ${b} H ${x+2}`)+` C ${x+9} ${b} ${x+12} ${t} ${x+27} ${t} H ${x+r-32} C ${x+r-15} ${t} ${x+r-13} ${b} ${x+r} ${b} H ${w-14} Q ${w-3} ${b} ${w-3} ${b+10}`;svg.style.width=w+'px';svg.setAttribute('viewBox',`0 0 ${w} 76`);svg.querySelector('.tab-edge').setAttribute('d',d);svg.querySelector('.tab-fill').setAttribute('d',d+` V 76 H 2 Z`);}}
+new MutationObserver(draw).observe(document.querySelector('.folder-tabs'),{subtree:true,attributes:true,attributeFilter:['class']});addEventListener('resize',draw);draw();})();
