@@ -23,3 +23,5 @@ Folder/grid revision: selected Home/Info tabs rise in place with rounder curves,
 Info Customize controls both columns or either separately: scale, x/y, typeface, font size/weight, line height, letter/word/paragraph spacing, alignment, color, column gap and document width. Move handles support pointer dragging and arrow keys (Shift for 10px). Settings persist in localStorage under pause-info-layout-v1 and can be reset. These preferences are browser-local, not written back to the shared website source.
 
 Folder revision 19: continuous SVG folder rules, neutral uppercase background at 20% opacity on #F9F9F9, direct Info content editing, browser-local Save and JSON backup import/export. Customize also controls page background, background letters, opacity, grid spacing and tab stroke.
+
+Revision 20: stationary folder tabs, black completed viewport outline, hidden native scrollbar with scrolling retained, 15% background glyph opacity, transparent portrait canvas over the fixed site grid, matching 15px/12px uppercase camera cells.

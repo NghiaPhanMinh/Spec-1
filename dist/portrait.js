@@ -9,7 +9,7 @@ const sample = document.createElement('canvas');
 sample.width = 512;
 sample.height = 384;
 const sc = sample.getContext('2d', { willReadFrequently: true });
-const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const cells = new Map();
 let tiles = [], mask, luminance, previousLuma, model, segment, stream;
 let sourceCenter={x:0,y:0},transferSource={x:0,y:0},phraseTime=0,handConfirmations=0,transferAxis=null,transferGeometry=null,bodyBounds=null,transferBounds=null;
@@ -51,7 +51,7 @@ function field(x,y,t) {
 }
 function buildQuote(){quoteWidth=Math.min(width*.9,1250);quoteHeight=Math.min(110,quoteWidth/12.2)*3.2}
 function resize() {
-  width=innerWidth; height=innerHeight; tileSize=width<600?14:18;
+  width=innerWidth; height=innerHeight; tileSize=width<600?12:15;
   const dpr=Math.min(devicePixelRatio||1,2);
   canvas.width=Math.round(width*dpr); canvas.height=Math.round(height*dpr);
   canvas.style.width=width+'px'; canvas.style.height=height+'px';
@@ -88,8 +88,8 @@ function fitMessage(){const pad=24,available=Math.max(width*.46,2*Math.min(ancho
  }
  const m=messageLayout;m.x=clamp(anchor.x,m.w/2+pad,width-m.w/2-pad);m.y=clamp(anchor.y,m.h/2+pad,height-m.h/2-pad);return m;
 }
-function drawMessage(now){const reveal=calm>0?1:0;if(reveal<.005)return;const m=fitMessage();ctx.save();ctx.globalAlpha=reveal;ctx.fillStyle=`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;ctx.font=`800 ${tileSize*.62}px monospace`;ctx.textAlign='center';ctx.textBaseline='middle';
- for(const cell of tiles){const y=Math.floor(cell.y-m.y+m.h/2),x=Math.floor(cell.x-m.x+m.w/2-typeFlow(y,now));if(x<0||y<0||x>=m.w||y>=m.h||messageData[(x+y*m.w)*4+3]<120)continue;ctx.globalAlpha=sentenceVisibility(cell.x,cell.y);ctx.fillText(alphabet[Math.floor(cell.seed*51)],cell.x,cell.y)}
+function drawMessage(now){const reveal=calm>0?1:0;if(reveal<.005)return;const m=fitMessage();ctx.save();ctx.globalAlpha=reveal;ctx.fillStyle=`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;ctx.font=`800 ${tileSize*.76}px monospace`;ctx.textAlign='center';ctx.textBaseline='middle';
+ for(const cell of tiles){const y=Math.floor(cell.y-m.y+m.h/2),x=Math.floor(cell.x-m.x+m.w/2-typeFlow(y,now));if(x<0||y<0||x>=m.w||y>=m.h||messageData[(x+y*m.w)*4+3]<120)continue;ctx.globalAlpha=sentenceVisibility(cell.x,cell.y);ctx.fillText(alphabet[Math.min(25,Math.floor(cell.seed*26))],cell.x,cell.y)}
  mo.globalCompositeOperation='source-in';mo.fillStyle=ctx.fillStyle;mo.fillRect(0,0,m.w,m.h);mo.globalCompositeOperation='source-over';
  mr.globalCompositeOperation='source-over';mr.clearRect(0,0,m.w,m.h);mr.drawImage(messageOutline,0,0);
  const ax=transferGeometry.axis,r=transferGeometry.sentence,cx=m.w/2,cy=m.h/2,mid=m.x*ax.x+m.y*ax.y;
@@ -139,14 +139,14 @@ function buildGridRoutes(){
  for(const route of transferRoutes.values())route.phase=route.phaseSum/route.weight;
 }
 function drawTransfer(now){if(calm<=0||calm>=1||!transferGeometry)return;updateTransferTargets(now);
- ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`800 ${tileSize*.66}px monospace`;ctx.fillStyle=`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;
+ ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`800 ${tileSize*.76}px monospace`;ctx.fillStyle=`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;
  for(const cell of tiles){const route=transferRoutes.get(Math.floor(cell.x/tileSize)+','+Math.floor(cell.y/tileSize));if(!route)continue;
   // Adjacent cells light up and fade in order. Each cell always draws its own fixed glyph.
   const opacity=Math.exp(-Math.pow((calm-route.phase)/.085,2))*Math.sin(Math.PI*calm)*.72;
   if(opacity<.012)continue;ctx.globalAlpha=opacity;ctx.fillText(opinionGlyph(cell.x,cell.y,phraseTime),cell.x,cell.y);
  }ctx.restore();
 }
-function opinionGlyph(x,y,now){const epoch=Math.floor(now/2000),row=Math.floor(y/tileSize),col=Math.floor(x/tileSize),block=Math.floor(col/44);const pick=Math.floor(hash(row+epoch*17,block+epoch*31)*decisions.length),phrase=decisions[pick]+'   ';return phrase[(col%44)%phrase.length]}
+function opinionGlyph(x,y,now){const epoch=Math.floor(now/2000),row=Math.floor(y/tileSize),col=Math.floor(x/tileSize),block=Math.floor(col/44);const pick=Math.floor(hash(row+epoch*17,block+epoch*31)*decisions.length),phrase=decisions[pick].toUpperCase()+' ';return phrase[(col%44)%phrase.length]}
 function draw(now) {
   if(!alive)return;
   if(now-lastDraw<32){raf=requestAnimationFrame(draw);return}lastDraw=now;
@@ -167,9 +167,9 @@ function draw(now) {
   const t=now*.001;
 
 
-  ctx.globalAlpha=1;ctx.fillStyle='#fff';ctx.fillRect(0,0,width,height);
+  ctx.globalAlpha=1;ctx.clearRect(0,0,width,height);
 
-  bc.clearRect(0,0,width,height);bc.textAlign='center';bc.textBaseline='middle';bc.font=`800 ${tileSize*.66}px monospace`;
+  bc.clearRect(0,0,width,height);bc.textAlign='center';bc.textBaseline='middle';bc.font=`800 ${tileSize*.76}px monospace`;
   for(const cell of tiles){if(!cell.inside)continue;
    const faceFade=cell.y<sourceCenter.y-height*.08 ? .6 : 1;cell.bodyAlpha=cell.opacity*bodyVisibility(cell.x,cell.y)*faceFade;if(cell.bodyAlpha<.005)continue;
    const glyph=opinionGlyph(cell.x,cell.y,calm>0?phraseTime:now);

@@ -17,3 +17,5 @@
 @media(max-width:650px){:root{--bar:76px}.folder-tab{width:140px}.folder-tab:last-child{left:128px}.folder-tab:last-child svg{left:-128px}}
 
 :root{--site-background:#f9f9f9;--site-gridColor:#000000;--site-gridOpacity:.2;--site-tabStroke:2.25}body,.folder-bar{background:var(--site-background)}.tab-fill{fill:var(--site-background)}.tab-edge{stroke-width:var(--site-tabStroke)}
+
+html{scrollbar-gutter:auto;scrollbar-width:none}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}body{scrollbar-width:none}.tab-edge{stroke:#000}#folder-outline{position:fixed;inset:0;width:100%;height:100%;z-index:21;pointer-events:none}#folder-outline path{fill:none;stroke:#000;stroke-width:var(--site-tabStroke);stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}:root{--site-gridOpacity:.15}.camera-page,#artwork-host iframe{background:transparent}.camera-page{border-top:0}
