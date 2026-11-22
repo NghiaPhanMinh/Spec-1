@@ -62,7 +62,7 @@ function resize() {
   anchor={x:width/2,y:height/2};
 }
 resize(); addEventListener('resize',resize);
-addEventListener('keydown',e=>{if(e.code==='Digit2'&&!e.repeat)parent.postMessage('switch-mode',location.origin)});
+addEventListener('keydown',e=>{if(e.code==='BracketRight'&&!e.repeat){e.preventDefault();parent.postMessage('toggle-adjustments',location.origin)}if(e.code==='Digit2'&&!e.repeat)parent.postMessage('switch-mode',location.origin)});
 
 // Only opacity and glyph content change. Coordinates never leave the screen grid.
 function layout(now){if(!mask)return;let sumX=0,sumY=0,count=0,minX=width,maxX=0,minY=height,maxY=0;for(const cell of tiles){
