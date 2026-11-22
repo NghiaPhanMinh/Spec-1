@@ -32,7 +32,7 @@ const decisions=[
 ];
 const outlineTint=document.createElement("canvas"),ot=outlineTint.getContext("2d");
 const outline=document.createElement("canvas"),oc=outline.getContext("2d");outline.width=512;outline.height=384;
-let width, height, tileSize, quoteWidth, quoteHeight, hand = null, handAt = 0;
+let gridOffsetX=0,gridOffsetY=0,gridStep=0;let width, height, tileSize, quoteWidth, quoteHeight, hand = null, handAt = 0;
 let calm = 0, anchor = { x: 0, y: 0 }, alive = true, raf, captureTimer;
 let lastDraw=0;
 let prev = performance.now(), lastLayout = 0, lastNoise = 0, lastHand = 0, lastDrop = 0;
@@ -51,17 +51,19 @@ function field(x,y,t) {
 }
 function buildQuote(){quoteWidth=Math.min(width*.9,1250);quoteHeight=Math.min(110,quoteWidth/12.2)*3.2}
 function resize() {
-  width=innerWidth; height=innerHeight; tileSize=width<600?12:15;
+  width=innerWidth; height=innerHeight; tileSize=gridStep||(width<600?12:15);gridOffsetX=-1;gridOffsetY=-1;
   const dpr=Math.min(devicePixelRatio||1,2);
   canvas.width=Math.round(width*dpr); canvas.height=Math.round(height*dpr);
   canvas.style.width=width+'px'; canvas.style.height=height+'px';
   ctx.setTransform(dpr,0,0,dpr,0,0);
   buildQuote(); cells.clear(); tiles=[];
-  for(let y=tileSize/2;y<height;y+=tileSize)for(let x=tileSize/2;x<width;x+=tileSize){const cell={x,y,l:1,n:.5,seed:hash(x,y),opacity:0,bodyAlpha:0,quoteAlpha:0,energy:0};cells.set(x+","+y,cell);tiles.push(cell)}
+  for(let y=tileSize/2;y<height;y+=tileSize)for(let x=tileSize/2;x<width;x+=tileSize){const cell={x,y,col:Math.floor(x/tileSize),row:Math.floor(y/tileSize),l:1,n:.5,seed:hash(x,y),opacity:0,bodyAlpha:0,quoteAlpha:0,energy:0};cells.set(x+","+y,cell);tiles.push(cell)}
   outline.width=canvas.width;outline.height=canvas.height;outlineTint.width=canvas.width;outlineTint.height=canvas.height;bodyLayer.width=canvas.width;bodyLayer.height=canvas.height;bc.setTransform(dpr,0,0,dpr,0,0);
   anchor={x:width/2,y:height/2};
 }
 resize(); addEventListener('resize',resize);
+function syncViewportGrid(){try{const frame=window.frameElement,style=parent.getComputedStyle(parent.document.documentElement),step=Number(style.getPropertyValue('--site-gridSpacing'))||15;if(step!==tileSize){gridStep=step;resize()}const rect=frame.getBoundingClientRect(),dx=((-rect.left%step)+step)%step,dy=((-rect.top%step)+step)%step;if(Math.abs(dx-gridOffsetX)>.01||Math.abs(dy-gridOffsetY)>.01){gridOffsetX=dx;gridOffsetY=dy;for(const cell of tiles){cell.x=(cell.col+.5)*step+dx;cell.y=(cell.row+.5)*step+dy}lastLayout=-Infinity}}catch{}}
+
 addEventListener('keydown',e=>{if(e.code==='BracketRight'&&!e.repeat){e.preventDefault();parent.postMessage('toggle-adjustments',location.origin)}if(e.code==='Digit2'&&!e.repeat)parent.postMessage('switch-mode',location.origin)});
 
 // Only opacity and glyph content change. Coordinates never leave the screen grid.
@@ -154,6 +156,7 @@ function draw(now) {
   const raised=hand&&now-handAt<650;
   calm=clamp(calm+(raised?elapsed:-elapsed)/3,0,1);
   if(raised&&!previouslyRaised){messageFont=messageFonts[Math.floor(Math.random()*messageFonts.length)];messageKey='';transferSource={...sourceCenter};transferBounds=bodyBounds?{...bodyBounds}:null;transferAxis=null;phraseTime=now;transferCells=snapshotSources();transferTargetKey='';}previouslyRaised=!!raised;
+  syncViewportGrid();
   if(now-lastLayout>85){layout(now);lastLayout=now}
   if(raised){
     const ids=[0,5,9,13,17];
@@ -171,6 +174,7 @@ function draw(now) {
 
   bc.clearRect(0,0,width,height);bc.textAlign='center';bc.textBaseline='middle';bc.font=`800 ${tileSize*.76}px monospace`;
   for(const cell of tiles){if(!cell.inside)continue;
+   bc.globalAlpha=1;bc.fillStyle='#f9f9f9';bc.fillRect(cell.x-tileSize/2,cell.y-tileSize/2,tileSize,tileSize);bc.globalAlpha=.18;bc.strokeStyle=calm<.005?'#0000ff':`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;bc.lineWidth=.5;bc.strokeRect(cell.x-tileSize/2,cell.y-tileSize/2,tileSize,tileSize);
    const faceFade=cell.y<sourceCenter.y-height*.08 ? .6 : 1;cell.bodyAlpha=cell.opacity*bodyVisibility(cell.x,cell.y)*faceFade;if(cell.bodyAlpha<.005)continue;
    const glyph=opinionGlyph(cell.x,cell.y,calm>0?phraseTime:now);
    bc.globalAlpha=cell.bodyAlpha;bc.fillStyle=calm<.005?'#0000FF':`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;bc.fillText(glyph,cell.x,cell.y);

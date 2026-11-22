@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#f9f9f9">
   <meta name="description" content="A question of power. An interactive camera artwork for SDG 5 — Gender Equality.">
   <title>A Question of Power — Phan Minh Nghia</title>
-  <link rel="stylesheet" href="folder.css?v=folderspring-21">
-  <script defer src="modes.js?v=folderspring-21"></script>
+  <link rel="stylesheet" href="folder.css?v=terminal-22">
+  <script defer src="modes.js?v=terminal-22"></script>
 </head>
 <body>
   <canvas id="site-grid" aria-hidden="true"></canvas>
@@ -37,6 +37,11 @@
           <span class="quote-line closing" aria-hidden="true"><strong>POWER</strong><span>”&lt;/title&gt;</span></span>
         </h1>
       </div>
+      <section id="dialogue-page" class="dialogue-page" aria-label="A question of power: terminal dialogue" tabindex="-1">
+        <div class="terminal-copy"><span class="terminal-prefix">C:\Users\pmnghiaa&gt;</span> <span id="terminal-text"></span><span class="terminal-cursor" aria-hidden="true"></span></div>
+        <p id="terminal-announcement" class="visually-hidden" aria-live="polite"></p>
+        <div class="terminal-controls"><div><span class="terminal-prefix">C:\Users\pmnghiaa&gt;</span><br><button id="dialogue-back" type="button">backspace_return/</button><br><button id="dialogue-next" type="button">enter_continue</button><span id="dialogue-count" aria-hidden="true"></span></div><button id="dialogue-skip" type="button">skip_to_generative_art&gt;</button></div>
+      </section>
       <section id="camera-page" class="camera-page" aria-label="Interactive letter portrait. Raise a stop palm to pause the decisions. Press 2 to switch to the clock.">
         <div id="artwork-host"></div>
       </section>
@@ -76,8 +81,9 @@
       </div>
     </section>
   </main>
-  <script defer src="folder-tabs.js?v=folderspring-21"></script>
-  <script defer src="customize.js?v=folderspring-21"></script>
-  <script defer src="site-grid.js?v=folderspring-21"></script>
+  <script defer src="dialogue.js?v=terminal-22"></script>
+  <script defer src="folder-tabs.js?v=terminal-22"></script>
+  <script defer src="customize.js?v=terminal-22"></script>
+  <script defer src="site-grid.js?v=terminal-22"></script>
 </body>
 </html>

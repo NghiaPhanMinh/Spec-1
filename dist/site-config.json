@@ -1,0 +1,42 @@
+{
+  "columns": [
+    {
+      "scale": 1,
+      "x": 0,
+      "y": 0,
+      "size": 16,
+      "weight": 400,
+      "leading": 1.28,
+      "tracking": 0,
+      "wordSpacing": 0,
+      "paragraph": 1.4,
+      "family": "Consolas,monospace",
+      "align": "justify",
+      "color": "#070707"
+    },
+    {
+      "scale": 1,
+      "x": 0,
+      "y": 0,
+      "size": 16,
+      "weight": 400,
+      "leading": 1.28,
+      "tracking": 0,
+      "wordSpacing": 0,
+      "paragraph": 1.4,
+      "family": "Consolas,monospace",
+      "align": "justify",
+      "color": "#070707"
+    }
+  ],
+  "gap": 80,
+  "width": 100,
+  "background": "#f9f9f9",
+  "gridColor": "#000000",
+  "gridOpacity": 0.1,
+  "gridLineOpacity": 0.1,
+  "gridSpacing": 15,
+  "tabStroke": 1.2,
+  "gridRevision": 21,
+  "updatedAt": "2026-11-22T16:43:26.044Z"
+}
