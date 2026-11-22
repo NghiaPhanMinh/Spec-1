@@ -15,7 +15,7 @@ let tiles = [], mask, luminance, previousLuma, model, segment, stream;
 let sourceCenter={x:0,y:0},transferSource={x:0,y:0},phraseTime=0,handConfirmations=0,transferAxis=null,transferGeometry=null,bodyBounds=null,transferBounds=null;
 let transferCells=[],transferTargets=[],transferRoutes=new Map(),transferTargetKey='',contourBusy=false,lastContour=0;
 const contourWorker=new Worker(new URL('./contour-worker.js?v=bounded-15',import.meta.url),{type:'module'});
-let previouslyRaised=false;const messageFonts=['Georgia','"Palatino Linotype",Georgia','"Times New Roman"','"Baskerville",Georgia','"Book Antiqua",Georgia'];let messageFont=messageFonts[0];
+let buildStarted=0,artBuild=0,outlineBuild=0,exitingAt=0;let contourPaths=[],contourLength=0,contourDirty=true,lastContourReveal=-1;let previouslyRaised=false;const messageFonts=['Georgia','"Palatino Linotype",Georgia','"Times New Roman"','"Baskerville",Georgia','"Book Antiqua",Georgia'];let messageFont=messageFonts[0];
 const bodyLayer=document.createElement('canvas'),bc=bodyLayer.getContext('2d');
 const maskLayer=document.createElement('canvas'),mc=maskLayer.getContext('2d');maskLayer.width=512;maskLayer.height=384;
 const decisions=[
@@ -153,6 +153,7 @@ function draw(now) {
   if(!alive)return;
   if(now-lastDraw<32){raf=requestAnimationFrame(draw);return}lastDraw=now;
   const elapsed=Math.max(0,(now-prev)/1000),dt=Math.min(elapsed,.05);prev=now;
+  if(mask&&!buildStarted)buildStarted=now;const buildT=buildStarted?Math.max(0,(now-buildStarted)/3200):0;artBuild=smooth(0,1,buildT);outlineBuild=smooth(.3,1,buildT);if(exitingAt){const fade=1-smooth(0,1300,now-exitingAt);artBuild*=fade;outlineBuild*=fade}
   const raised=hand&&now-handAt<650;
   calm=clamp(calm+(raised?elapsed:-elapsed)/3,0,1);
   if(raised&&!previouslyRaised){messageFont=messageFonts[Math.floor(Math.random()*messageFonts.length)];messageKey='';transferSource={...sourceCenter};transferBounds=bodyBounds?{...bodyBounds}:null;transferAxis=null;phraseTime=now;transferCells=snapshotSources();transferTargetKey='';}previouslyRaised=!!raised;
@@ -173,14 +174,15 @@ function draw(now) {
   ctx.globalAlpha=1;ctx.clearRect(0,0,width,height);
 
   bc.clearRect(0,0,width,height);bc.textAlign='center';bc.textBaseline='middle';bc.font=`800 ${tileSize*.76}px monospace`;
-  for(const cell of tiles){if(!cell.inside)continue;
-   bc.globalAlpha=1;bc.fillStyle='#f9f9f9';bc.fillRect(cell.x-tileSize/2,cell.y-tileSize/2,tileSize,tileSize);bc.globalAlpha=.18;bc.strokeStyle=calm<.005?'#0000ff':`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;bc.lineWidth=.5;bc.strokeRect(cell.x-tileSize/2,cell.y-tileSize/2,tileSize,tileSize);
-   const faceFade=cell.y<sourceCenter.y-height*.08 ? .6 : 1;cell.bodyAlpha=cell.opacity*bodyVisibility(cell.x,cell.y)*faceFade;if(cell.bodyAlpha<.005)continue;
-   const glyph=opinionGlyph(cell.x,cell.y,calm>0?phraseTime:now);
+  for(const cell of tiles){if(!cell.inside)continue;const birth=smooth(cell.seed*.68,cell.seed*.68+.32,artBuild);if(birth<.005)continue;
+   bc.globalAlpha=birth;bc.fillStyle='#f9f9f9';bc.fillRect(cell.x-tileSize/2,cell.y-tileSize/2,tileSize,tileSize);bc.globalAlpha=.18*birth;bc.strokeStyle=calm<.005?'#0000ff':`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;bc.lineWidth=.5;bc.strokeRect(cell.x-tileSize/2,cell.y-tileSize/2,tileSize,tileSize);
+   const faceFade=cell.y<sourceCenter.y-height*.08 ? .6 : 1;cell.bodyAlpha=birth*cell.opacity*bodyVisibility(cell.x,cell.y)*faceFade;if(cell.bodyAlpha<.005)continue;
+   const glyph=artBuild<.99?alphabet[Math.min(25,Math.floor(hash(cell.col+Math.floor(now/90),cell.row)*26))]:opinionGlyph(cell.x,cell.y,calm>0?phraseTime:now);
    bc.globalAlpha=cell.bodyAlpha;bc.fillStyle=calm<.005?'#0000FF':`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;bc.fillText(glyph,cell.x,cell.y);
   }
   bc.save();bc.globalAlpha=1;bc.globalCompositeOperation='destination-in';bc.translate(width*.91,height*.09);bc.scale(-1,1);bc.drawImage(maskLayer,0,0,width*.82,height*.82);bc.restore();
   ctx.drawImage(bodyLayer,0,0,width,height);
+  drawContourReveal(now);
   ot.globalCompositeOperation='source-over';ot.clearRect(0,0,outlineTint.width,outlineTint.height);ot.drawImage(outline,0,0);
   ot.globalCompositeOperation='source-in';ot.fillStyle=`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;ot.fillRect(0,0,outlineTint.width,outlineTint.height);
   ctx.drawImage(outlineTint,0,0,width,height);drawTransfer(now);drawMessage(now);
@@ -197,7 +199,11 @@ async function capture() {
   }catch(error){status.textContent='Tracking interrupted. Press 2 to leave, then reopen.'}
   if(alive)captureTimer=setTimeout(capture,65);
 }
-contourWorker.onmessage=({data:paths})=>{contourBusy=false;if(!alive)return;oc.setTransform(1,0,0,1,0,0);oc.clearRect(0,0,outline.width,outline.height);const density=Math.min(devicePixelRatio||1,2);oc.setTransform(width*.82*density/512,0,0,height*.82*density/384,width*.09*density,height*.09*density);oc.strokeStyle='#171717';oc.lineWidth=.52;oc.lineJoin='round';oc.lineCap='round';const t=performance.now()*.0001;for(const path of paths){oc.beginPath();path.points.forEach(([x,y],i)=>{const dx=Math.sin(x*.018+y*.012+t)*.4,dy=Math.sin(y*.018-x*.012+t)*.4;i?oc.lineTo(512-x+dx,y+dy):oc.moveTo(512-x+dx,y+dy)});if(path.closed)oc.closePath();oc.stroke()}};
+// Retain vector lengths and reveal a continuous ink path instead of fading in an outline.
+contourWorker.onmessage=({data:paths})=>{contourBusy=false;if(!alive)return;contourLength=0;contourDirty=true;contourPaths=paths.map(path=>{const lengths=[0];let length=0;for(let i=1;i<path.points.length;i++){length+=Math.hypot(path.points[i][0]-path.points[i-1][0],path.points[i][1]-path.points[i-1][1]);lengths.push(length)}if(path.closed&&path.points.length>1)length+=Math.hypot(path.points[0][0]-path.points.at(-1)[0],path.points[0][1]-path.points.at(-1)[1]);const entry={...path,length,lengths,start:contourLength};contourLength+=length;return entry})};
+function drawContourReveal(now){if(!contourDirty&&Math.abs(lastContourReveal-outlineBuild)<.002)return;contourDirty=false;lastContourReveal=outlineBuild;oc.setTransform(1,0,0,1,0,0);oc.clearRect(0,0,outline.width,outline.height);const density=Math.min(devicePixelRatio||1,2);oc.setTransform(width*.82*density/512,0,0,height*.82*density/384,width*.09*density,height*.09*density);oc.strokeStyle='#171717';oc.lineWidth=.52;oc.lineJoin='round';oc.lineCap='round';const budget=contourLength*outlineBuild,t=now*.0001;for(const path of contourPaths){let remaining=budget-path.start;if(remaining<=0)break;oc.beginPath();let previous=null;for(let i=0;i<path.points.length;i++){const p=path.points[i],x=512-p[0]+Math.sin(p[0]*.018+p[1]*.012+t)*.4,y=p[1]+Math.sin(p[1]*.018-p[0]*.012+t)*.4;if(!previous){oc.moveTo(x,y);previous=[x,y];continue}const segment=path.lengths[i]-path.lengths[i-1];if(remaining<segment){const f=remaining/Math.max(segment,.001);oc.lineTo(previous[0]+(x-previous[0])*f,previous[1]+(y-previous[1])*f);break}oc.lineTo(x,y);remaining-=segment;previous=[x,y]}if(path.closed&&budget>=path.start+path.length)oc.closePath();oc.stroke()}}
+addEventListener('message',e=>{if(e.origin===location.origin&&e.source===parent&&e.data==='artwork-exit')exitingAt=performance.now()});
+
 contourWorker.onerror=()=>{contourBusy=false;status.textContent='Outline worker failed. Reload to retry.'};
 function dispose(){alive=false;contourWorker.terminate();cancelAnimationFrame(raf);clearTimeout(captureTimer);stream?.getTracks().forEach(t=>t.stop());model?.close();segment?.close()}
 addEventListener('pagehide',dispose);
