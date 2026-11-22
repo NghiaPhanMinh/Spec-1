@@ -41,3 +41,10 @@ html{scroll-snap-type:none}.narrative-quote>.quote-line{display:none}.narrative-
 .quote-flow-measure [data-word="10"]{font-family:Arial,Helvetica,sans-serif}
 
 .folder-tab,.narrative-quote{user-select:none}
+
+/* Temporary browser-style selection, with no permanent highlight blocks. */
+.quote-word{z-index:2}.quote-selection-layer{position:absolute;inset:0;z-index:1;pointer-events:none}.quote-selection-layer>span{position:absolute;display:block;background:#1674e8}.quote-letter{background:transparent!important}.dialogue-page{width:calc(100% - 6px);margin-inline:3px;clip-path:inset(0 0 3px round 0 0 11px 11px);overflow:hidden;color:#62ed91}.terminal-cursor{background:#62ed91}.terminal-controls button:hover,.terminal-controls button:focus-visible{background:#62ed91;color:#000}.terminal-controls button:disabled{opacity:.45}#dialogue-count{color:#62ed9199}.terminal-copy,.terminal-controls{max-width:100%;overflow-wrap:anywhere}.terminal-controls>button{overflow-wrap:anywhere;min-width:0}.quote-selecting .quote-letter{background:transparent!important}
+
+.dialogue-page{height:calc(100svh - 64px);min-height:0;gap:clamp(20px,4vh,40px);padding-block:clamp(24px,6vh,64px)}.terminal-copy{min-height:0;flex:1;overflow:hidden}.terminal-controls{flex-shrink:0}@media(max-width:650px){.dialogue-page{font-size:clamp(14px,3.7vw,17px);padding-inline:22px}.terminal-copy{min-height:0}.terminal-controls{gap:16px}}
+
+.terminal-copy{max-width:min(100%,720px)}

@@ -144,7 +144,7 @@ function drawTransfer(now){if(calm<=0||calm>=1||!transferGeometry)return;updateT
  ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`800 ${tileSize*.76}px monospace`;ctx.fillStyle=`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;
  for(const cell of tiles){const route=transferRoutes.get(Math.floor(cell.x/tileSize)+','+Math.floor(cell.y/tileSize));if(!route)continue;
   // Adjacent cells light up and fade in order. Each cell always draws its own fixed glyph.
-  const opacity=Math.exp(-Math.pow((calm-route.phase)/.085,2))*Math.sin(Math.PI*calm)*.72;
+  const opacity=Math.exp(-Math.pow((calm-route.phase)/.13,2))*Math.sin(Math.PI*calm)*.72;
   if(opacity<.012)continue;ctx.globalAlpha=opacity;ctx.fillText(opinionGlyph(cell.x,cell.y,phraseTime),cell.x,cell.y);
  }ctx.restore();
 }
@@ -175,7 +175,7 @@ function draw(now) {
 
   bc.clearRect(0,0,width,height);bc.textAlign='center';bc.textBaseline='middle';bc.font=`800 ${tileSize*.76}px monospace`;
   for(const cell of tiles){if(!cell.inside)continue;const birth=smooth(cell.seed*.68,cell.seed*.68+.32,artBuild);if(birth<.005)continue;
-   bc.globalAlpha=birth;bc.fillStyle='#f9f9f9';bc.fillRect(cell.x-tileSize/2,cell.y-tileSize/2,tileSize,tileSize);bc.globalAlpha=.18*birth;bc.strokeStyle=calm<.005?'#0000ff':`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;bc.lineWidth=.5;bc.strokeRect(cell.x-tileSize/2,cell.y-tileSize/2,tileSize,tileSize);
+   bc.globalAlpha=birth;bc.fillStyle='#f9f9f9';bc.fillRect(cell.x-tileSize/2,cell.y-tileSize/2,tileSize,tileSize);bc.globalAlpha=.18*birth*bodyVisibility(cell.x,cell.y);bc.strokeStyle='#0000ff';bc.lineWidth=.5;bc.strokeRect(cell.x-tileSize/2,cell.y-tileSize/2,tileSize,tileSize);
    const faceFade=cell.y<sourceCenter.y-height*.08 ? .6 : 1;cell.bodyAlpha=birth*cell.opacity*bodyVisibility(cell.x,cell.y)*faceFade;if(cell.bodyAlpha<.005)continue;
    const glyph=artBuild<.99?alphabet[Math.min(25,Math.floor(hash(cell.col+Math.floor(now/90),cell.row)*26))]:opinionGlyph(cell.x,cell.y,calm>0?phraseTime:now);
    bc.globalAlpha=cell.bodyAlpha;bc.fillStyle=calm<.005?'#0000FF':`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;bc.fillText(glyph,cell.x,cell.y);
