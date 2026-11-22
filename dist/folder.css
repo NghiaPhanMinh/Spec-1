@@ -32,3 +32,5 @@ main{z-index:auto}.quote-page{position:relative;z-index:3}.info-page,.camera-pag
 .terminal-copy{max-width:min(100%,720px)}
 
 html{scroll-snap-type:y proximity}.quote-page,.dialogue-page,.camera-page{scroll-snap-align:start;scroll-margin-top:var(--bar)}
+
+.folder-tab>span{translate:0 var(--tab-hover-offset,0px)}.folder-tab:not(.selected)>span{translate:0 var(--tab-hover-offset,4px)}
