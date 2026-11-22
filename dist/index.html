@@ -1,1 +1,78 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pause — Portrait and Clock</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:white}iframe{position:fixed;inset:0;width:100%;height:100%;border:0}</style><script defer src="modes.js?v=gridwave-16"></script></head><body></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="A question of power. An interactive camera artwork for SDG 5 — Gender Equality.">
+  <title>A Question of Power — Phan Minh Nghia</title>
+  <link rel="stylesheet" href="folder.css?v=folders-17">
+  <script defer src="modes.js?v=folders-17"></script>
+</head>
+<body>
+  <header class="folder-bar">
+    <div class="folder-rule rule-one" aria-hidden="true"></div>
+    <div class="folder-rule rule-two" aria-hidden="true"></div>
+    <nav class="folder-tabs" role="tablist" aria-label="Project documents">
+      <button id="home-tab" class="folder-tab selected" type="button" role="tab" aria-selected="true" aria-controls="home-panel" tabindex="0" data-panel="home">
+        <svg aria-hidden="true" viewBox="0 0 168 60" preserveAspectRatio="none"><path class="tab-fill" d="M0 60L16 10Q19 4 25 4H143Q149 4 152 10L168 60Z"/><path class="tab-edge" d="M0 60L16 10Q19 4 25 4H143Q149 4 152 10L168 60"/></svg>
+        <span>Home</span>
+      </button>
+      <button id="info-tab" class="folder-tab" type="button" role="tab" aria-selected="false" aria-controls="info-panel" tabindex="-1" data-panel="info">
+        <svg aria-hidden="true" viewBox="0 0 168 60" preserveAspectRatio="none"><path class="tab-fill" d="M0 60L16 10Q19 4 25 4H143Q149 4 152 10L168 60Z"/><path class="tab-edge" d="M0 60L16 10Q19 4 25 4H143Q149 4 152 10L168 60"/></svg>
+        <span>Info</span>
+      </button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="home-panel" role="tabpanel" aria-labelledby="home-tab">
+      <div class="quote-page">
+        <h1 class="central-quote" aria-label="The central question of gender equality is a question of power.">
+          <span class="quote-line opening" aria-hidden="true">&lt;title&gt;“The</span>
+          <span class="quote-line justified" aria-hidden="true"><span>central</span><span>question</span></span>
+          <span class="quote-line justified" aria-hidden="true"><span>of</span><span class="pink">gender</span><span class="pink">equality</span></span>
+          <span class="quote-line justified" aria-hidden="true"><span>is</span><span>a</span><span>question</span><span>of</span></span>
+          <span class="quote-line closing" aria-hidden="true"><strong>POWER</strong><span>”&lt;/title&gt;</span></span>
+        </h1>
+      </div>
+      <section id="camera-page" class="camera-page" aria-label="Interactive letter portrait. Raise a stop palm to pause the decisions. Press 2 to switch to the clock.">
+        <div id="artwork-host"></div>
+      </section>
+    </section>
+
+    <section id="info-panel" class="info-page" role="tabpanel" aria-labelledby="info-tab" hidden>
+      <div class="document-column">
+        <span class="code-tag">&lt;body&gt;</span>
+        <p>Your Name: Phan Minh Nghia - S4176100</p>
+        <p>Your Group Name: Tên nhóm là gì đây?</p>
+        <div class="document-block">
+          <p>Group member’s name:</p>
+          <ul class="member-list">
+            <li>Nguyen Tuong Lam - s4075107</li>
+            <li>Nguyen Hoang Tue Minh - s4183536</li>
+            <li>Nguyen Huynh Hanh - Nhi s4033612</li>
+            <li>Phan Minh Nghia - s4176100</li>
+            <li>Phan Le Phuong Uyen - s4135480</li>
+          </ul>
+        </div>
+        <p>Course code, name, time: COMM2754 | Digital Media Specialisation 1 | 26t3</p>
+        <p>Complete affiliation: RMIT University Vietnam, Saigon South Campus, School of Communications and Design, Digital Media Program</p>
+        <span class="code-tag">&lt;/body&gt;</span>
+      </div>
+      <div class="document-column">
+        <span class="code-tag">&lt;body&gt;</span>
+        <p>Current date: <time id="current-date" datetime="2026-11-22">22 November 2026</time></p>
+        <p>Complete SDG: SDG 5 - Gender Equality -<br><a href="https://sdgs.un.org/goals/goal5" target="_blank" rel="noopener noreferrer">Achieve gender equality and empower all women and girls.</a></p>
+        <div class="document-block">
+          <p>Quote:<br>“The central question of gender equality is a question of power.”</p>
+          <p class="quote-source">António Guterres, 2019.<br><a href="https://news.un.org/en/story/2019/03/1034571" target="_blank" rel="noopener noreferrer">UN News, 13 March 2019</a></p>
+        </div>
+        <p>A paragraph connecting the quote to the SDG with a call to action:<br>SDG 5 calls for women’s full participation in decision-making. When women are absent, pause the decision and make room for their voices. Pass the mic. Nominate a woman. Change who decides.</p>
+        <p>Audience: Young adults (18 - 25)</p>
+        <span class="code-tag">&lt;/body&gt;</span>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
