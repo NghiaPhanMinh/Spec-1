@@ -38,5 +38,9 @@
   "gridSpacing": 15,
   "tabStroke": 1.2,
   "gridRevision": 21,
-  "updatedAt": "2026-11-22T16:43:26.044Z"
+  "updatedAt": "2026-11-22T16:49:55.562Z",
+  "content": [
+    "\n        <span class=\"code-tag\">&lt;body&gt;</span>\n        <p>Your Name: Phan Minh Nghia - S4176100</p>\n        <p>Your Group Name: Tên nhóm là gì đây?</p>\n        <div class=\"document-block\">\n          <p>Group member’s name:</p>\n          <ul class=\"member-list\">\n            <li>Nguyen Tuong Lam - s4075107</li>\n            <li>Nguyen Hoang Tue Minh - s4183536</li>\n            <li>Nguyen Huynh Hanh - Nhi s4033612</li>\n            <li>Phan Minh Nghia - s4176100</li>\n            <li>Phan Le Phuong Uyen - s4135480</li>\n          </ul>\n        </div>\n        <p>Course code, name, time: COMM2754 | Digital Media Specialisation 1 | 26t3</p>\n        <p>Complete affiliation: RMIT University Vietnam, Saigon South Campus, School of Communications and Design, Digital Media Program</p>\n        <span class=\"code-tag\">&lt;/body&gt;</span>",
+    "\n        <span class=\"code-tag\">&lt;body&gt;</span>\n        <p>Current date: <time id=\"current-date\" datetime=\"2026-11-22\">22 November 2026</time></p>\n        <p>Complete SDG: SDG 5 - Gender Equality -<br><a href=\"https://sdgs.un.org/goals/goal5\" target=\"_blank\" rel=\"noopener noreferrer\">Achieve gender equality and empower all women and girls.</a></p>\n        <div class=\"document-block\">\n          <p>Quote:<br>“The central question of gender equality is a question of power.”</p>\n          <p class=\"quote-source\">António Guterres, 2019.<br><a href=\"https://news.un.org/en/story/2019/03/1034571\" target=\"_blank\" rel=\"noopener noreferrer\">UN News, 13 March 2019</a></p>\n        </div>\n        <p>A paragraph connecting the quote to the SDG with a call to action:<br>SDG 5 calls for women’s full participation in decision-making. When women are absent, pause the decision and make room for their voices. Pass the mic. Nominate a woman. Change who decides.</p>\n        <p>Audience: Young adults (18 - 25)</p>\n        <span class=\"code-tag\">&lt;/body&gt;</span>"
+  ]
 }
