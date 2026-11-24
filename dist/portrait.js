@@ -32,7 +32,7 @@ const decisions=[
 ];
 const outlineTint=document.createElement("canvas"),ot=outlineTint.getContext("2d");
 const outline=document.createElement("canvas"),oc=outline.getContext("2d");outline.width=512;outline.height=384;
-let gridOffsetX=0,gridOffsetY=0,gridStep=0;let width, height, tileSize, quoteWidth, quoteHeight, hand = null, handAt = 0;
+let pageBackground='#f9f9f9',pageGridColor='#000000',pageGridAlpha=.1;let gridOffsetX=0,gridOffsetY=0,gridStep=0;let width, height, tileSize, quoteWidth, quoteHeight, hand = null, handAt = 0;
 let calm = 0, anchor = { x: 0, y: 0 }, alive = true, raf, captureTimer;
 let lastDraw=0;
 let prev = performance.now(), lastLayout = 0, lastNoise = 0, lastHand = 0, lastDrop = 0;
@@ -62,13 +62,13 @@ function resize() {
   anchor={x:width/2,y:height/2};
 }
 resize(); addEventListener('resize',resize);
-function syncViewportGrid(){try{const frame=window.frameElement,style=parent.getComputedStyle(parent.document.documentElement),step=Number(style.getPropertyValue('--site-gridSpacing'))||15;if(step!==tileSize){gridStep=step;resize()}const rect=frame.getBoundingClientRect(),dx=((-rect.left%step)+step)%step,dy=((-rect.top%step)+step)%step;if(Math.abs(dx-gridOffsetX)>.01||Math.abs(dy-gridOffsetY)>.01){gridOffsetX=dx;gridOffsetY=dy;for(const cell of tiles){cell.x=(cell.col+.5)*step+dx;cell.y=(cell.row+.5)*step+dy}lastLayout=-Infinity}}catch{}}
+function syncViewportGrid(){try{const frame=window.frameElement,style=parent.getComputedStyle(parent.document.documentElement),step=Number(style.getPropertyValue('--site-gridSpacing'))||15;if(step!==tileSize){gridStep=step;resize()}pageBackground=style.getPropertyValue('--site-background').trim()||'#f9f9f9';pageGridColor=style.getPropertyValue('--site-gridColor').trim()||'#000';pageGridAlpha=Number(style.getPropertyValue('--site-gridLineOpacity'))||0;const rect=frame.getBoundingClientRect(),dx=((-rect.left%step)+step)%step,dy=((-rect.top%step)+step)%step;if(Math.abs(dx-gridOffsetX)>.01||Math.abs(dy-gridOffsetY)>.01){gridOffsetX=dx;gridOffsetY=dy;for(const cell of tiles){cell.x=(cell.col+.5)*step+dx;cell.y=(cell.row+.5)*step+dy}lastLayout=-Infinity}}catch{}}
 
 addEventListener('keydown',e=>{if(e.code==='BracketRight'&&!e.repeat){e.preventDefault();parent.postMessage('toggle-adjustments',location.origin)}if(e.code==='Digit2'&&!e.repeat)parent.postMessage('switch-mode',location.origin)});
 
 // Only opacity and glyph content change. Coordinates never leave the screen grid.
 function layout(now){if(!mask)return;let sumX=0,sumY=0,count=0,minX=width,maxX=0,minY=height,maxY=0;for(const cell of tiles){
- const u=(cell.x-width*.09)/(width*.82),v=(cell.y-height*.09)/(height*.82);
+ const u=cell.x/width,v=cell.y/height;
  const sx=clamp(Math.floor((1-u)*512),0,511),sy=clamp(Math.floor(v*384),0,383),inside=u>=0&&u<=1&&v>=0&&v<=1;
  const id=sx+sy*512,foreground=inside&&mask[id*4]>150;
  cell.pixel=id;cell.l=foreground?(luminance?.[id]??1):1;
@@ -104,7 +104,7 @@ function typeFlow(y,now){return Math.sin(y*.035+now*.0009)*2.4+Math.sin(y*.083-n
 function smooth(a,b,v){const t=clamp((v-a)/(b-a),0,1);return t*t*(3-2*t)}
 function range(rect,axis){const v=[[rect.minX,rect.minY],[rect.maxX,rect.minY],[rect.minX,rect.maxY],[rect.maxX,rect.maxY]].map(([x,y])=>x*axis.x+y*axis.y);return {min:Math.min(...v),max:Math.max(...v)}}
 function prepareTransfer(){const m=fitMessage(),body=transferBounds||bodyBounds||{minX:width*.2,maxX:width*.8,minY:height*.3,maxY:height*.9};
- if(!transferAxis){const ids=[0,5,9,13,17],targetX=hand?width*(.09+ids.reduce((sum,i)=>sum+1-hand[i].x,0)/5*.82):m.x,targetY=hand?height*(.09+ids.reduce((sum,i)=>sum+hand[i].y,0)/5*.82):m.y;let dx=targetX-transferSource.x,dy=targetY-transferSource.y;if(Math.hypot(dx,dy)<40)dy=-100;const l=Math.hypot(dx,dy);transferAxis={x:dx/l,y:dy/l}}
+ if(!transferAxis){const ids=[0,5,9,13,17],targetX=hand?width*(ids.reduce((sum,i)=>sum+1-hand[i].x,0)/5):m.x,targetY=hand?height*(ids.reduce((sum,i)=>sum+hand[i].y,0)/5):m.y;let dx=targetX-transferSource.x,dy=targetY-transferSource.y;if(Math.hypot(dx,dy)<40)dy=-100;const l=Math.hypot(dx,dy);transferAxis={x:dx/l,y:dy/l}}
  const axis=transferAxis,side={x:-axis.y,y:axis.x},sentence={minX:m.x-m.w/2,maxX:m.x+m.w/2,minY:m.y-m.h/2,maxY:m.y+m.h/2};
  transferGeometry={axis,body:range(body,axis),sentence:range(sentence,axis),bodyCross:range(body,side),sentenceCross:range(sentence,side),side,m};
 }
@@ -163,8 +163,8 @@ function draw(now) {
     const ids=[0,5,9,13,17];
     const hx=ids.reduce((s,i)=>s+1-hand[i].x,0)/ids.length;
     const hy=ids.reduce((s,i)=>s+hand[i].y,0)/ids.length;
-    const tx=clamp(width*(.09+hx*.82),24,width-24);
-    const ty=clamp(height*(.09+hy*.82),24,height-24);
+    const tx=clamp(width*hx,24,width-24);
+    const ty=clamp(height*hy,24,height-24);
     anchor.x=mix(anchor.x,tx,1-Math.exp(-dt*6));anchor.y=mix(anchor.y,ty,1-Math.exp(-dt*6));
   }
   if(calm>0)prepareTransfer();
@@ -175,12 +175,12 @@ function draw(now) {
 
   bc.clearRect(0,0,width,height);bc.textAlign='center';bc.textBaseline='middle';bc.font=`800 ${tileSize*.76}px monospace`;
   for(const cell of tiles){if(!cell.inside)continue;const birth=smooth(cell.seed*.68,cell.seed*.68+.32,artBuild);if(birth<.005)continue;
-   bc.globalAlpha=birth;bc.fillStyle='#f9f9f9';bc.fillRect(cell.x-tileSize/2,cell.y-tileSize/2,tileSize,tileSize);bc.globalAlpha=.18*birth*bodyVisibility(cell.x,cell.y);bc.strokeStyle='#0000ff';bc.lineWidth=.5;bc.strokeRect(cell.x-tileSize/2,cell.y-tileSize/2,tileSize,tileSize);
+   bc.globalAlpha=birth;bc.fillStyle=pageBackground;bc.fillRect(cell.x-tileSize/2,cell.y-tileSize/2,tileSize,tileSize);bc.globalAlpha=birth*.18*(1-calm);bc.strokeStyle='#0000ff';bc.lineWidth=.5;bc.strokeRect(cell.x-tileSize/2,cell.y-tileSize/2,tileSize,tileSize);bc.globalAlpha=birth*pageGridAlpha*calm;bc.strokeStyle=pageGridColor;bc.strokeRect(cell.x-tileSize/2,cell.y-tileSize/2,tileSize,tileSize);
    const faceFade=cell.y<sourceCenter.y-height*.08 ? .6 : 1;cell.bodyAlpha=birth*cell.opacity*bodyVisibility(cell.x,cell.y)*faceFade;if(cell.bodyAlpha<.005)continue;
    const glyph=artBuild<.99?alphabet[Math.min(25,Math.floor(hash(cell.col+Math.floor(now/90),cell.row)*26))]:opinionGlyph(cell.x,cell.y,calm>0?phraseTime:now);
    bc.globalAlpha=cell.bodyAlpha;bc.fillStyle=calm<.005?'#0000FF':`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;bc.fillText(glyph,cell.x,cell.y);
   }
-  bc.save();bc.globalAlpha=1;bc.globalCompositeOperation='destination-in';bc.translate(width*.91,height*.09);bc.scale(-1,1);bc.drawImage(maskLayer,0,0,width*.82,height*.82);bc.restore();
+  bc.save();bc.globalAlpha=1;bc.globalCompositeOperation='destination-in';bc.translate(width,0);bc.scale(-1,1);bc.drawImage(maskLayer,0,0,width,height);bc.restore();
   ctx.drawImage(bodyLayer,0,0,width,height);
   drawContourReveal(now);
   ot.globalCompositeOperation='source-over';ot.clearRect(0,0,outlineTint.width,outlineTint.height);ot.drawImage(outline,0,0);
@@ -201,7 +201,7 @@ async function capture() {
 }
 // Retain vector lengths and reveal a continuous ink path instead of fading in an outline.
 contourWorker.onmessage=({data:paths})=>{contourBusy=false;if(!alive)return;contourLength=0;contourDirty=true;contourPaths=paths.map(path=>{const lengths=[0];let length=0;for(let i=1;i<path.points.length;i++){length+=Math.hypot(path.points[i][0]-path.points[i-1][0],path.points[i][1]-path.points[i-1][1]);lengths.push(length)}if(path.closed&&path.points.length>1)length+=Math.hypot(path.points[0][0]-path.points.at(-1)[0],path.points[0][1]-path.points.at(-1)[1]);const entry={...path,length,lengths,start:contourLength};contourLength+=length;return entry})};
-function drawContourReveal(now){if(!contourDirty&&Math.abs(lastContourReveal-outlineBuild)<.002)return;contourDirty=false;lastContourReveal=outlineBuild;oc.setTransform(1,0,0,1,0,0);oc.clearRect(0,0,outline.width,outline.height);const density=Math.min(devicePixelRatio||1,2);oc.setTransform(width*.82*density/512,0,0,height*.82*density/384,width*.09*density,height*.09*density);oc.strokeStyle='#171717';oc.lineWidth=.52;oc.lineJoin='round';oc.lineCap='round';const budget=contourLength*outlineBuild,t=now*.0001;for(const path of contourPaths){let remaining=budget-path.start;if(remaining<=0)break;oc.beginPath();let previous=null;for(let i=0;i<path.points.length;i++){const p=path.points[i],x=512-p[0]+Math.sin(p[0]*.018+p[1]*.012+t)*.4,y=p[1]+Math.sin(p[1]*.018-p[0]*.012+t)*.4;if(!previous){oc.moveTo(x,y);previous=[x,y];continue}const segment=path.lengths[i]-path.lengths[i-1];if(remaining<segment){const f=remaining/Math.max(segment,.001);oc.lineTo(previous[0]+(x-previous[0])*f,previous[1]+(y-previous[1])*f);break}oc.lineTo(x,y);remaining-=segment;previous=[x,y]}if(path.closed&&budget>=path.start+path.length)oc.closePath();oc.stroke()}}
+function drawContourReveal(now){if(!contourDirty&&Math.abs(lastContourReveal-outlineBuild)<.002)return;contourDirty=false;lastContourReveal=outlineBuild;oc.setTransform(1,0,0,1,0,0);oc.clearRect(0,0,outline.width,outline.height);const density=Math.min(devicePixelRatio||1,2);oc.setTransform(width*density/512,0,0,height*density/384,0,0);oc.strokeStyle='#171717';oc.lineWidth=.52;oc.lineJoin='round';oc.lineCap='round';const budget=contourLength*outlineBuild,t=now*.0001;for(const path of contourPaths){let remaining=budget-path.start;if(remaining<=0)break;oc.beginPath();let previous=null;for(let i=0;i<path.points.length;i++){const p=path.points[i],x=512-p[0]+Math.sin(p[0]*.018+p[1]*.012+t)*.4,y=p[1]+Math.sin(p[1]*.018-p[0]*.012+t)*.4;if(!previous){oc.moveTo(x,y);previous=[x,y];continue}const segment=path.lengths[i]-path.lengths[i-1];if(remaining<segment){const f=remaining/Math.max(segment,.001);oc.lineTo(previous[0]+(x-previous[0])*f,previous[1]+(y-previous[1])*f);break}oc.lineTo(x,y);remaining-=segment;previous=[x,y]}if(path.closed&&budget>=path.start+path.length)oc.closePath();oc.stroke()}}
 addEventListener('message',e=>{if(e.origin===location.origin&&e.source===parent&&e.data==='artwork-exit')exitingAt=performance.now()});
 
 contourWorker.onerror=()=>{contourBusy=false;status.textContent='Outline worker failed. Reload to retry.'};
