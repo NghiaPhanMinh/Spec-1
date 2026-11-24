@@ -33,7 +33,7 @@ const decisions=[
 const outlineTint=document.createElement("canvas"),ot=outlineTint.getContext("2d");
 const outline=document.createElement("canvas"),oc=outline.getContext("2d");outline.width=512;outline.height=384;
 let viewportLeft=0,viewportTop=0;let pageBackground='#f9f9f9',pageGridColor='#000000',pageGridAlpha=.1;let gridOffsetX=0,gridOffsetY=0,gridStep=0;let width, height, tileSize, quoteWidth, quoteHeight, hand = null, handAt = 0;
-const portalScene=document.createElement('canvas'),portalInk=document.createElement('canvas'),psc=portalScene.getContext('2d'),pic=portalInk.getContext('2d');let heldPalmSince=0,handPortal=0;let calm = 0, anchor = { x: 0, y: 0 }, alive = true, raf, captureTimer;
+const portalScene=document.createElement('canvas'),portalInk=document.createElement('canvas'),psc=portalScene.getContext('2d'),pic=portalInk.getContext('2d'),portalComposite=document.createElement('canvas'),pcc=portalComposite.getContext('2d');let heldPalmSince=0,handPortal=0;let calm = 0, anchor = { x: 0, y: 0 }, alive = true, raf, captureTimer;
 let lastDraw=0;
 let prev = performance.now(), lastLayout = 0, lastNoise = 0, lastHand = 0, lastDrop = 0;
 const mix = (a,b,t) => a+(b-a)*t;
@@ -59,7 +59,7 @@ function resize() {
   buildQuote(); cells.clear(); tiles=[];
   for(let y=tileSize/2;y<height;y+=tileSize)for(let x=tileSize/2;x<width;x+=tileSize){const cell={x,y,col:Math.floor(x/tileSize),row:Math.floor(y/tileSize),l:1,n:.5,seed:hash(x,y),opacity:0,bodyAlpha:0,quoteAlpha:0,energy:0};cells.set(x+","+y,cell);tiles.push(cell)}
   outline.width=canvas.width;outline.height=canvas.height;outlineTint.width=canvas.width;outlineTint.height=canvas.height;bodyLayer.width=canvas.width;bodyLayer.height=canvas.height;bc.setTransform(dpr,0,0,dpr,0,0);
-  portalScene.width=canvas.width;portalScene.height=canvas.height;portalInk.width=canvas.width;portalInk.height=canvas.height;anchor={x:width/2,y:height/2};
+  portalScene.width=canvas.width;portalScene.height=canvas.height;portalInk.width=canvas.width;portalInk.height=canvas.height;portalComposite.width=canvas.width;portalComposite.height=canvas.height;anchor={x:width/2,y:height/2};
 }
 resize(); addEventListener('resize',resize);
 function syncViewportGrid(){try{const frame=window.frameElement,style=parent.getComputedStyle(parent.document.documentElement),step=Number(style.getPropertyValue('--site-gridSpacing'))||15;if(step!==tileSize){gridStep=step;resize()}pageBackground=style.getPropertyValue('--site-background').trim()||'#f9f9f9';pageGridColor=style.getPropertyValue('--site-gridColor').trim()||'#000';pageGridAlpha=Number(style.getPropertyValue('--site-gridLineOpacity'))||0;const rect=frame.getBoundingClientRect();viewportLeft=rect.left;viewportTop=rect.top;const dx=((-rect.left%step)+step)%step,dy=((-rect.top%step)+step)%step;if(Math.abs(dx-gridOffsetX)>.01||Math.abs(dy-gridOffsetY)>.01){gridOffsetX=dx;gridOffsetY=dy;for(const cell of tiles){cell.x=(cell.col+.5)*step+dx;cell.y=(cell.row+.5)*step+dy}lastLayout=-Infinity}}catch{}}
@@ -155,7 +155,7 @@ function draw(now) {
   const elapsed=Math.max(0,(now-prev)/1000),dt=Math.min(elapsed,.05);prev=now;
   if(mask&&!buildStarted)buildStarted=now;const buildT=buildStarted?Math.max(0,(now-buildStarted)/3200):0;artBuild=smooth(0,1,buildT);outlineBuild=smooth(.3,1,buildT);if(exitingAt){const fade=1-smooth(0,1300,now-exitingAt);artBuild*=fade;outlineBuild*=fade}
   const raised=hand&&now-handAt<650;if(raised){if(!heldPalmSince)heldPalmSince=now}else heldPalmSince=0;const portalTarget=raised&&now-heldPalmSince>=5000?1:0;handPortal=clamp(handPortal+(portalTarget?dt:-dt)/2.2,0,1);
-  calm=clamp(calm+(raised?elapsed:-elapsed)/3,0,1);
+  calm=clamp(calm+((raised||handPortal>0)?elapsed:-elapsed)/3,0,1);
   if(raised&&!previouslyRaised){messageFont=messageFonts[Math.floor(Math.random()*messageFonts.length)];messageKey='';transferSource={...sourceCenter};transferBounds=bodyBounds?{...bodyBounds}:null;transferAxis=null;phraseTime=now;transferCells=snapshotSources();transferTargetKey='';}previouslyRaised=!!raised;
   syncViewportGrid();
   if(now-lastLayout>85){layout(now);lastLayout=now}
@@ -188,7 +188,8 @@ function draw(now) {
   ctx.drawImage(outlineTint,0,0,width,height);drawTransfer(now);drawMessage(now);
   drawHandPortal(now);ctx.globalAlpha=1;raf=requestAnimationFrame(draw);
 }
-function drawHandPortal(now){if(handPortal<=0)return;let background;try{background=parent.portalBackground?.()}catch{}if(!background)return;const density=canvas.width/width;psc.setTransform(1,0,0,1,0,0);psc.clearRect(0,0,portalScene.width,portalScene.height);psc.drawImage(canvas,0,0);ctx.clearRect(0,0,width,height);drawTransfer(now);drawMessage(now);pic.setTransform(1,0,0,1,0,0);pic.globalCompositeOperation='source-over';pic.clearRect(0,0,portalInk.width,portalInk.height);pic.drawImage(canvas,0,0);pic.drawImage(outlineTint,0,0);pic.globalCompositeOperation='source-in';pic.fillStyle='#fff';pic.fillRect(0,0,portalInk.width,portalInk.height);ctx.clearRect(0,0,width,height);ctx.drawImage(portalScene,0,0,width,height);const radius=Math.hypot(width,height)*smooth(0,1,handPortal);ctx.save();ctx.beginPath();const step=tileSize;for(let y=0;y<height;y+=step)for(let x=0;x<width;x+=step){if(Math.hypot(x+step/2-anchor.x,y+step/2-anchor.y)<=radius)ctx.rect(x,y,step+.3,step+.3)}ctx.clip();ctx.globalAlpha=1;ctx.drawImage(background,0,0,width,height);ctx.shadowColor='#fff';ctx.shadowBlur=14;ctx.drawImage(portalInk,0,0,width,height);ctx.shadowBlur=5;ctx.drawImage(portalInk,0,0,width,height);ctx.restore()}
+function drawHandPortal(now){if(handPortal<=0)return;let background;try{background=parent.portalBackground?.()}catch{}if(!background)return;const density=canvas.width/width;psc.setTransform(1,0,0,1,0,0);psc.clearRect(0,0,portalScene.width,portalScene.height);psc.drawImage(canvas,0,0);ctx.clearRect(0,0,width,height);drawTransfer(now);drawMessage(now);pic.setTransform(1,0,0,1,0,0);pic.globalCompositeOperation='source-over';pic.clearRect(0,0,portalInk.width,portalInk.height);pic.drawImage(canvas,0,0);pic.drawImage(outlineTint,0,0);pic.globalCompositeOperation='source-in';pic.fillStyle='#fff';pic.fillRect(0,0,portalInk.width,portalInk.height);ctx.clearRect(0,0,width,height);ctx.drawImage(portalScene,0,0,width,height);const radius=Math.hypot(width,height)*smooth(0,1,handPortal),feather=tileSize*5;pcc.setTransform(density,0,0,density,0,0);pcc.clearRect(0,0,width,height);pcc.drawImage(background,0,0,width,height);pcc.shadowColor='#fff';pcc.shadowBlur=14;pcc.drawImage(portalInk,0,0,width,height);pcc.shadowBlur=5;pcc.drawImage(portalInk,0,0,width,height);pcc.shadowBlur=0;ctx.save();const step=tileSize;for(let y=0;y<height;y+=step)for(let x=0;x<width;x+=step){const distance=Math.hypot(x+step/2-anchor.x,y+step/2-anchor.y),jitter=(noise(x*.015+now*.0002,y*.015)-.5)*step*2,alpha=smooth(-feather,feather,radius-distance+jitter);if(alpha<.005)continue;ctx.globalAlpha=alpha;ctx.drawImage(portalComposite,x*density,y*density,step*density,step*density,x,y,step+.2,step+.2);if(alpha<.98){ctx.globalAlpha=Math.sin(alpha*Math.PI)*.45;ctx.fillStyle='#fff';ctx.font='800 '+step*.76+'px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(opinionGlyph(x+step/2,y+step/2,now),x+step/2,y+step/2)}}ctx.restore()}
+
 raf=requestAnimationFrame(draw);
 async function capture() {
   if(!alive)return;
