@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f9f9f9">
-  <meta name="description" content="A question of power. An interactive camera artwork for SDG 5 — Gender Equality.">
-  <title>A Question of Power — Phan Minh Nghia</title>
-  <link rel="stylesheet" href="folder.css?v=garden-35">
-  <script defer src="modes.js?v=garden-35"></script>
+  <meta name="description" content="Pause decision. An interactive camera artwork for SDG 5 — Gender Equality.">
+  <title>Pause decision</title>
+  <link rel="stylesheet" href="folder.css?v=editor-36">
+  <script defer src="modes.js?v=editor-36"></script>
 </head>
 <body>
   <canvas id="site-grid" aria-hidden="true"></canvas>
@@ -51,43 +51,43 @@
 
     <section id="info-panel" class="info-page" role="tabpanel" aria-labelledby="info-tab" hidden>
       <button id="customize-toggle" class="customize-toggle" type="button" aria-expanded="false" aria-controls="customize-panel">Customize</button>
-      <div class="document-column" data-document>
-        <span class="code-tag">&lt;body&gt;</span>
-        <p>Your Name: Phan Minh Nghia - S4176100</p>
-        <p>Your Group Name: Tên nhóm là gì đây?</p>
-        <div class="document-block">
-          <p>Group member’s name:</p>
-          <ul class="member-list">
-            <li>Nguyen Tuong Lam - s4075107</li>
-            <li>Nguyen Hoang Tue Minh - s4183536</li>
-            <li>Nguyen Huynh Hanh - Nhi s4033612</li>
-            <li>Phan Minh Nghia - s4176100</li>
-            <li>Phan Le Phuong Uyen - s4135480</li>
-          </ul>
-        </div>
-        <p>Course code, name, time: COMM2754 | Digital Media Specialisation 1 | 26t3</p>
-        <p>Complete affiliation: RMIT University Vietnam, Saigon South Campus, School of Communications and Design, Digital Media Program</p>
-        <span class="code-tag">&lt;/body&gt;</span>
-      </div>
-      <div class="document-column" data-document>
-        <span class="code-tag">&lt;body&gt;</span>
-        <p>Current date: <time id="current-date" datetime="2026-11-22">22 November 2026</time></p>
-        <p>Complete SDG: SDG 5 - Gender Equality -<br><a href="https://sdgs.un.org/goals/goal5" target="_blank" rel="noopener noreferrer">Achieve gender equality and empower all women and girls.</a></p>
-        <div class="document-block">
-          <p>Quote:<br>“The central question of gender equality is a question of power.”</p>
-          <p class="quote-source">António Guterres, 2019.<br><a href="https://news.un.org/en/story/2019/03/1034571" target="_blank" rel="noopener noreferrer">UN News, 13 March 2019</a></p>
-        </div>
-        <p>A paragraph connecting the quote to the SDG with a call to action:<br>SDG 5 calls for women’s full participation in decision-making. When women are absent, pause the decision and make room for their voices. Pass the mic. Nominate a woman. Change who decides.</p>
-        <p>Audience: Young adults (18 - 25)</p>
-        <span class="code-tag">&lt;/body&gt;</span>
-      </div>
+      <div class="document-column" data-document><div class="editor-file"><span class="syntax-comment">// PROJECT / 01</span><p class="editor-filename">credits.js</p></div>
+<div class="editor-line"><span class="syntax-keyword">const</span> author = {</div>
+<div class="editor-line editor-indent"><span class="syntax-key">name:</span> <span class="syntax-string">"Phan Minh Nghia"</span>,</div>
+<div class="editor-line editor-indent"><span class="syntax-key">student:</span> <span class="syntax-string">"S4176100"</span></div>
+<div class="editor-line">};</div>
+<div class="editor-line editor-space"><span class="syntax-keyword">const</span> group = <span class="syntax-string">"Tên nhóm là gì đây?"</span>;</div>
+<div class="editor-line"><span class="syntax-keyword">const</span> members = [</div>
+<div class="editor-line editor-indent">Nguyen Tuong Lam <span class="syntax-comment">// s4075107</span></div>
+<div class="editor-line editor-indent">Nguyen Hoang Tue Minh <span class="syntax-comment">// s4183536</span></div>
+<div class="editor-line editor-indent">Nguyen Huynh Hanh - Nhi <span class="syntax-comment">// s4033612</span></div>
+<div class="editor-line editor-indent">Phan Minh Nghia <span class="syntax-comment">// s4176100</span></div>
+<div class="editor-line editor-indent">Phan Le Phuong Uyen <span class="syntax-comment">// s4135480</span></div>
+<div class="editor-line">];</div>
+<div class="editor-line editor-space"><span class="syntax-key">course:</span> <span class="syntax-string">"COMM2754"</span></div>
+<div class="editor-line editor-indent">Digital Media Specialisation 1 <span class="syntax-comment">/ 26t3</span></div>
+<div class="editor-line editor-space"><span class="syntax-key">affiliation:</span> RMIT University Vietnam</div>
+<div class="editor-line editor-indent">Saigon South Campus</div><div class="editor-line editor-indent">School of Communications and Design</div><div class="editor-line editor-indent">Digital Media Program</div></div>
+      <div class="document-column" data-document><div class="editor-file"><span class="syntax-comment">// INTENT / 02</span><p class="editor-filename">pause-decision.js</p></div>
+<div class="editor-line"><span class="syntax-keyword">export default</span> {</div>
+<div class="editor-line editor-indent syntax-comment">// THE GOAL</div>
+<div class="editor-line editor-indent"><a class="info-goal" href="https://sdgs.un.org/goals/goal5" target="_blank" rel="noopener noreferrer"><span class="info-number">05</span> Gender<br>Equality</a></div>
+<div class="editor-line editor-indent">Achieve gender equality and empower all women and girls.</div>
+<div class="editor-line editor-space editor-indent syntax-comment">// WHO HOLDS THE POWER?</div>
+<div class="editor-line editor-indent info-quote">“The central question of gender equality is a question of <strong>power.</strong>”</div>
+<div class="editor-line editor-indent syntax-comment">António Guterres, 2019 · <a href="https://news.un.org/en/story/2019/03/1034571" target="_blank" rel="noopener noreferrer">UN News</a></div>
+<div class="editor-line editor-space editor-indent syntax-comment">// CHANGE WHO DECIDES</div>
+<div class="editor-line editor-indent info-action">Pass the mic.<br>Nominate a woman.<br>Change who decides.</div>
+<div class="editor-line editor-indent info-context">SDG 5 calls for women’s full participation in decision-making. When women are absent, pause the decision and make room for their voices.</div>
+<div class="editor-line editor-space editor-indent"><span class="syntax-key">audience:</span> <span class="syntax-string">"Young adults, 18–25"</span></div>
+<div class="editor-line editor-indent"><span class="syntax-key">date:</span> <time id="current-date">24 November 2026</time></div><div class="editor-line">};</div></div>
     </section>
   </main>
-  <script defer src="dialogue.js?v=garden-35"></script>
-  <script defer src="sketch.js?v=garden-35"></script>
-  <script defer src="uncover.js?v=garden-35"></script>
-  <script defer src="folder-tabs.js?v=garden-35"></script>
-  <script defer src="customize.js?v=garden-35"></script>
-  <script defer src="site-grid.js?v=garden-35"></script>
+  <script defer src="dialogue.js?v=editor-36"></script>
+  <script defer src="sketch.js?v=editor-36"></script>
+  <script defer src="uncover.js?v=editor-36"></script>
+  <script defer src="folder-tabs.js?v=editor-36"></script>
+  <script defer src="customize.js?v=editor-36"></script>
+  <script defer src="site-grid.js?v=editor-36"></script>
 </body>
 </html>

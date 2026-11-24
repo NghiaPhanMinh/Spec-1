@@ -1,6 +1,6 @@
 // Shared background renderer. Uses the site's existing canvas lifecycle and controls.
 (()=>{
-const CONFIG={colors:{cream:'#FFE3D6',pink:'#FF4D9A',magenta:'#E6007E',orange:'#FFB347'},blur:{back:48,front:7,line:5},steps:12,drift:35,breathing:.05};
+const CONFIG={colors:{cream:'#FFE3D6',pink:'#FF00D4',magenta:'#FF00D4',orange:'#004BFF'},blur:{back:48,front:7,line:5},steps:12,drift:35,breathing:.05};
 const back=document.createElement('canvas'),front=document.createElement('canvas'),grain=document.createElement('canvas'),bc=back.getContext('2d'),fc=front.getContext('2d'),gc=grain.getContext('2d');let width=0,height=0;const seed=Math.random()*100;
 const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)},hash=(x,y)=>{const v=Math.sin(x*127.1+y*311.7)*43758.5453;return v-Math.floor(v)},noise=(x,y)=>{const a=Math.floor(x),b=Math.floor(y),u=smooth(x-a),v=smooth(y-b),mix=(a,b,t)=>a+(b-a)*t;return mix(mix(hash(a,b),hash(a+1,b),u),mix(hash(a,b+1),hash(a+1,b+1),u),v)},rgb=c=>{const n=parseInt(c.replace('#',''),16);return[n>>16&255,n>>8&255,n&255]},rgba=(c,a)=>'rgba('+rgb(c).join(',')+','+a+')';
 function easedGradientStops(g,color){for(let i=0;i<CONFIG.steps;i++){const t=i/(CONFIG.steps-1);g.addColorStop(t,rgba(color,1-smooth(t)))}}
