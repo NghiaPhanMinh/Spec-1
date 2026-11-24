@@ -15,7 +15,7 @@ let tiles = [], mask, luminance, previousLuma, model, segment, stream;
 let sourceCenter={x:0,y:0},transferSource={x:0,y:0},phraseTime=0,handConfirmations=0,transferAxis=null,transferGeometry=null,bodyBounds=null,transferBounds=null;
 let transferCells=[],transferTargets=[],transferRoutes=new Map(),transferTargetKey='',contourBusy=false,lastContour=0;
 const contourWorker=new Worker(new URL('./contour-worker.js?v=bounded-15',import.meta.url),{type:'module'});
-let buildStarted=0,artBuild=0,outlineBuild=0,exitingAt=0;let contourPaths=[],contourLength=0,contourDirty=true,lastContourReveal=-1;let previouslyRaised=false;const messageFonts=['Georgia','"Palatino Linotype",Georgia','"Times New Roman"','"Baskerville",Georgia','"Book Antiqua",Georgia'];let messageFont=messageFonts[0];
+let buildStarted=0,artBuild=0,outlineBuild=0,exitingAt=0;let contourPaths=[],contourLength=0,contourDirty=true,lastContourReveal=-1;let previouslyRaised=false;const messageFonts=['Helvetica,Arial,sans-serif'];let messageFont=messageFonts[0];
 const bodyLayer=document.createElement('canvas'),bc=bodyLayer.getContext('2d');
 const maskLayer=document.createElement('canvas'),mc=maskLayer.getContext('2d');maskLayer.width=512;maskLayer.height=384;
 const decisions=[
@@ -64,7 +64,7 @@ function resize() {
 resize(); addEventListener('resize',resize);
 function syncViewportGrid(){try{const frame=window.frameElement,style=parent.getComputedStyle(parent.document.documentElement),step=Number(style.getPropertyValue('--site-gridSpacing'))||15;if(step!==tileSize){gridStep=step;resize()}pageBackground=style.getPropertyValue('--site-background').trim()||'#f9f9f9';pageGridColor=style.getPropertyValue('--site-gridColor').trim()||'#000';pageGridAlpha=Number(style.getPropertyValue('--site-gridLineOpacity'))||0;const rect=frame.getBoundingClientRect();viewportLeft=rect.left;viewportTop=rect.top;const dx=((-rect.left%step)+step)%step,dy=((-rect.top%step)+step)%step;if(Math.abs(dx-gridOffsetX)>.01||Math.abs(dy-gridOffsetY)>.01){gridOffsetX=dx;gridOffsetY=dy;for(const cell of tiles){cell.x=(cell.col+.5)*step+dx;cell.y=(cell.row+.5)*step+dy}lastLayout=-Infinity}}catch{}}
 
-addEventListener('keydown',e=>{if(e.code==='BracketRight'&&!e.repeat){e.preventDefault();parent.postMessage('toggle-adjustments',location.origin)}if(e.code==='Digit2'&&!e.repeat)parent.postMessage('switch-mode',location.origin)});
+addEventListener('keydown',e=>{if(e.code==='Digit2'&&!e.repeat)parent.postMessage('switch-mode',location.origin)});
 
 // Only opacity and glyph content change. Coordinates never leave the screen grid.
 function layout(now){if(!mask)return;let sumX=0,sumY=0,count=0,minX=width,maxX=0,minY=height,maxY=0;for(const cell of tiles){
@@ -80,13 +80,13 @@ function layout(now){if(!mask)return;let sumX=0,sumY=0,count=0,minX=width,maxX=0
 }if(count){sourceCenter={x:sumX/count,y:sumY/count};bodyBounds={minX,maxX,minY,maxY}}}
 const messageOutline=document.createElement('canvas'),mo=messageOutline.getContext('2d');const messageReveal=document.createElement('canvas'),mr=messageReveal.getContext('2d');
 const messageMask=document.createElement('canvas'),messageCtx=messageMask.getContext('2d',{willReadFrequently:true});let messageData,messageLayout,messageKey='';
-function wrapText(text,font,maxWidth){ctx.font='italic 800 '+font+'px '+messageFont;const lines=[];let line='';for(const word of text.split(' ')){const trial=line?line+' '+word:word;if(line&&ctx.measureText(trial).width>maxWidth){lines.push(line);line=word}else line=trial}if(line)lines.push(line);return lines}
+function wrapText(text,font,maxWidth){ctx.font='normal 700 '+font+'px '+messageFont;const lines=[];let line='';for(const word of text.split(' ')){const trial=line?line+' '+word:word;if(line&&ctx.measureText(trial).width>maxWidth){lines.push(line);line=word}else line=trial}if(line)lines.push(line);return lines}
 function fitMessage(){const pad=24,available=Math.max(width*.46,2*Math.min(anchor.x-pad,width-pad-anchor.x));const maxWidth=Math.min(width*.76,width-pad*2,available);const key=Math.round(maxWidth/12)+','+width+','+height;
  if(key!==messageKey){let font=Math.min(88,width*.075,height*.12),lines;
   do{lines=wrapText('No woman in the room? Pause the decision.',font,maxWidth);if(lines.length*font*1.2<=height-pad*2)break;font*=.94}while(font>24);
-  ctx.font='italic 800 '+font+'px '+messageFont;const w=Math.ceil(Math.max(...lines.map(line=>ctx.measureText(line).width))+12),h=Math.ceil(lines.length*font*1.2+12);
-  messageMask.width=w;messageMask.height=h;messageCtx.font='italic 800 '+font+'px '+messageFont;messageCtx.textAlign='center';messageCtx.textBaseline='middle';messageCtx.fillStyle='#fff';lines.forEach((line,i)=>messageCtx.fillText(line,w/2,6+(i+.5)*font*1.2));
-  messageOutline.width=w;messageOutline.height=h;messageReveal.width=w;messageReveal.height=h;mo.font='italic 800 '+font+'px '+messageFont;mo.textAlign='center';mo.textBaseline='middle';mo.strokeStyle='#fff';mo.lineWidth=.65;mo.lineJoin='round';lines.forEach((line,i)=>mo.strokeText(line,w/2,6+(i+.5)*font*1.2));messageData=messageCtx.getImageData(0,0,w,h).data;messageLayout={w,h,font,lines};messageKey=key;
+  ctx.font='normal 700 '+font+'px '+messageFont;const w=Math.ceil(Math.max(...lines.map(line=>ctx.measureText(line).width))+12),h=Math.ceil(lines.length*font*1.2+12);
+  messageMask.width=w;messageMask.height=h;messageCtx.font='normal 700 '+font+'px '+messageFont;messageCtx.textAlign='center';messageCtx.textBaseline='middle';messageCtx.fillStyle='#fff';lines.forEach((line,i)=>messageCtx.fillText(line,w/2,6+(i+.5)*font*1.2));
+  messageOutline.width=w;messageOutline.height=h;messageReveal.width=w;messageReveal.height=h;mo.font='normal 700 '+font+'px '+messageFont;mo.textAlign='center';mo.textBaseline='middle';mo.strokeStyle='#fff';mo.lineWidth=.65;mo.lineJoin='round';lines.forEach((line,i)=>mo.strokeText(line,w/2,6+(i+.5)*font*1.2));messageData=messageCtx.getImageData(0,0,w,h).data;messageLayout={w,h,font,lines};messageKey=key;
  }
  const m=messageLayout;m.x=clamp(anchor.x,m.w/2+pad,width-m.w/2-pad);m.y=clamp(anchor.y,m.h/2+pad,height-m.h/2-pad);return m;
 }
