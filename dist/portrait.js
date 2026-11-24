@@ -154,7 +154,7 @@ function draw(now) {
   if(now-lastDraw<32){raf=requestAnimationFrame(draw);return}lastDraw=now;
   const elapsed=Math.max(0,(now-prev)/1000),dt=Math.min(elapsed,.05);prev=now;
   if(mask&&!buildStarted)buildStarted=now;const buildT=buildStarted?Math.max(0,(now-buildStarted)/3200):0;artBuild=smooth(0,1,buildT);outlineBuild=smooth(.3,1,buildT);if(exitingAt){const fade=1-smooth(0,1300,now-exitingAt);artBuild*=fade;outlineBuild*=fade}
-  const raised=hand&&now-handAt<650;if(raised){if(!heldPalmSince)heldPalmSince=now}else heldPalmSince=0;const portalTarget=raised&&now-heldPalmSince>=5000?1:0;handPortal=clamp(handPortal+(portalTarget?dt:-dt)/2.2,0,1);
+  const raised=hand&&now-handAt<650;if(raised){if(!heldPalmSince)heldPalmSince=now}else heldPalmSince=0;const portalTarget=raised&&now-heldPalmSince>=5000?1:0;if(portalTarget&&handPortal===0){try{parent.siteSound?.bling()}catch{}}handPortal=clamp(handPortal+(portalTarget?dt:-dt)/2.2,0,1);
   const beforeCalm=calm;calm=clamp(calm+((raised||handPortal>0)?elapsed:-elapsed)/TRANSFER_SECONDS,0,1);
   try{if(!!raised!==previouslyRaised)parent.siteSound?.hand(!!raised);const direction=calm>beforeCalm?1:calm<beforeCalm?-1:0;if(direction&&direction!==previousFlight)parent.siteSound?.fly();previousFlight=direction}catch{}
   if(raised&&!previouslyRaised){messageFont=messageFonts[Math.floor(Math.random()*messageFonts.length)];messageKey='';transferSource={...sourceCenter};transferBounds=bodyBounds?{...bodyBounds}:null;transferAxis=null;phraseTime=now;transferCells=snapshotSources();transferTargetKey='';}previouslyRaised=!!raised;

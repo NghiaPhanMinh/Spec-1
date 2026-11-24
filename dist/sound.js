@@ -1,8 +1,8 @@
 // One audio graph for the page and its camera iframe. Original recordings stay local to the site.
 (()=>{
-  const CONFIG={master:.72,fanNormal:.75,fanHarsh:.9,noise:.17,flightSeconds:3,cupSeconds:1.15,cupOffset:4.9,keyboardOffset:2.5};
-  const files={fan:'audio/fan.mp3',cup:'audio/cup.mp3',keyboard:'audio/keyboard.mp3'},raw={},buffers={},pending={};
-  let ctx,master,fan=null,flight=null,cup=null,facecam=false,raised=false,flightToken=0,cupToken=0;
+  const CONFIG={master:.72,fanNormal:.75,fanHarsh:.9,noise:.17,flightSeconds:3,keyboardOffset:0};
+  const files={fan:'audio/fan-corrected.mp3',bling:'audio/bling.mp3',keyboard:'audio/keyboard-corrected.mp3'},raw={},buffers={},pending={};
+  let ctx,master,fan=null,flight=null,bling=null,facecam=false,raised=false,flightToken=0,blingToken=0;
   const downloads=Object.fromEntries(Object.entries(files).map(([key,url])=>[key,fetch(url).then(r=>{if(!r.ok)throw Error('Audio unavailable');return r.arrayBuffer()}).then(b=>raw[key]=b).catch(()=>null)]));
   function ramp(param,value,time=.18){param.cancelScheduledValues(ctx.currentTime);param.setTargetAtTime(value,ctx.currentTime,time/3)}
   function init(){if(!ctx){const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)return false;ctx=new Audio();master=ctx.createGain();master.gain.value=CONFIG.master;const limiter=ctx.createDynamicsCompressor();limiter.threshold.value=-5;limiter.knee.value=3;limiter.ratio.value=16;limiter.attack.value=.003;limiter.release.value=.12;master.connect(limiter);limiter.connect(ctx.destination)}if(ctx.state==='suspended')ctx.resume().catch(()=>{});return true}
@@ -16,14 +16,10 @@
   function state(){document.body.dataset.fanSound=facecam?(raised?'normal':'distorted'):'off';document.body.dataset.soundReady=String(ctx?.state==='running')}
   function hand(value){raised=!!value;if(fan){ramp(fan.dry.gain,raised?CONFIG.fanNormal:0);ramp(fan.wet.gain,raised?0:CONFIG.fanHarsh);ramp(fan.noiseGain.gain,raised?0:CONFIG.noise)}state()}
   function setFacecam(value){facecam=!!value;raised=false;if(facecam){init();startFan()}else{stopFan();flightToken++;stopOne(flight);flight=null}state()}
-  async function playCup(){const token=++cupToken,b=await buffer('cup');if(!b||token!==cupToken||document.hidden)return;stopOne(cup);const source=ctx.createBufferSource(),gain=ctx.createGain();source.buffer=b;source.connect(gain);gain.connect(master);const now=ctx.currentTime,duration=Math.min(CONFIG.cupSeconds,b.duration-CONFIG.cupOffset);gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(.85,now+.012);gain.gain.setValueAtTime(.85,now+duration-.08);gain.gain.linearRampToValueAtTime(0,now+duration);source.start(now,CONFIG.cupOffset,duration);cup={source,gain};source.onended=()=>{source.disconnect();gain.disconnect();if(cup?.source===source)cup=null};document.body.dataset.lastSound='cup'}
+  async function playBling(){const token=++blingToken,b=await buffer('bling');if(!b||token!==blingToken||document.hidden)return;stopOne(bling);const source=ctx.createBufferSource(),gain=ctx.createGain();source.buffer=b;source.connect(gain);gain.connect(master);const now=ctx.currentTime,duration=b.duration;gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(.85,now+.012);gain.gain.setValueAtTime(.85,now+duration-.08);gain.gain.linearRampToValueAtTime(0,now+duration);source.start(now,0,duration);bling={source,gain};source.onended=()=>{source.disconnect();gain.disconnect();if(bling?.source===source)bling=null};document.body.dataset.lastSound='bling'}
   async function fly(){const token=++flightToken,b=await buffer('keyboard');if(!b||!facecam||token!==flightToken||document.hidden)return;stopOne(flight);const source=ctx.createBufferSource(),gain=ctx.createGain();source.buffer=b;source.loop=true;source.loopStart=CONFIG.keyboardOffset;source.loopEnd=Math.min(b.duration,CONFIG.keyboardOffset+CONFIG.flightSeconds);source.connect(gain);gain.connect(master);const now=ctx.currentTime;gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(.8,now+.025);gain.gain.setValueAtTime(.8,now+CONFIG.flightSeconds-.08);gain.gain.linearRampToValueAtTime(0,now+CONFIG.flightSeconds);source.start(now,CONFIG.keyboardOffset);source.stop(now+CONFIG.flightSeconds);flight={source,gain};source.onended=()=>{source.disconnect();gain.disconnect();if(flight?.source===source)flight=null};document.body.dataset.lastSound='keyboard'}
-  window.siteSound={setFacecam,hand,fly,cup:playCup,CONFIG};
+  window.siteSound={setFacecam,hand,fly,bling:playBling,CONFIG};
   function unlock(){if(init())for(const key of Object.keys(files))buffer(key);if(facecam)startFan();state()}addEventListener('pointerdown',unlock,{capture:true});addEventListener('keydown',unlock,{capture:true});
-  addEventListener('keydown',e=>{if(e.code==='Digit0'&&!e.repeat&&!e.target.closest('input,textarea,select,[contenteditable=true]'))playCup()});
-  addEventListener('click',e=>{if(e.target.closest('[data-info-effect],.quote-word[data-effect]'))playCup()});
-  // Landing tokens also support Space/Enter without dispatching a click.
-  addEventListener('keydown',e=>{if(!e.repeat&&['Enter',' '].includes(e.key)&&e.target.matches('.quote-word[data-effect]'))playCup()},true);
-  document.addEventListener('visibilitychange',()=>{if(document.hidden){stopFan();flightToken++;cupToken++;stopOne(flight);stopOne(cup);flight=cup=null}else if(facecam)startFan()});
-  addEventListener('pagehide',()=>{facecam=false;stopFan();flightToken++;cupToken++;stopOne(flight);stopOne(cup);ctx?.close()});state();
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){stopFan();flightToken++;blingToken++;stopOne(flight);stopOne(bling);flight=bling=null}else if(facecam)startFan()});
+  addEventListener('pagehide',()=>{facecam=false;stopFan();flightToken++;blingToken++;stopOne(flight);stopOne(bling);ctx?.close()});state();
 })();
