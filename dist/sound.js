@@ -2,7 +2,7 @@
 (()=>{
   const CONFIG={master:.72,fanNormal:.14,fanCreepyDry:.11,fanHarsh:.035,noise:.008,typingGain:.24};
   const files={fan:'audio/fan-corrected.mp3',bling:'audio/bling-entry.mp3',keyboard:'audio/typing-fixed.mp3'},raw={},buffers={},pending={};
-  let ctx,master,fan=null,bling=null,facecam=false,portraitReady=false,raised=false,portalMix=0,handPortalMix=0,gradientOpen=false,worldEntered=false,typingToken=0,voices=new Set(),textures=new Set(),reverseBuffer=null,blingToken=0;
+  let ctx,master,fan=null,bling=null,facecam=false,portraitReady=false,raised=false,portalMix=0,handPortalMix=0,gradientOpen=false,worldEntered=false,typingToken=0,voices=new Set(),textures=new Set(),reverseBuffer=null,blingToken=0,lastControlClick=-Infinity;
   const downloads=Object.fromEntries(Object.entries(files).map(([key,url])=>[key,fetch(url).then(r=>{if(!r.ok)throw Error('Audio unavailable');return r.arrayBuffer()}).then(b=>raw[key]=b).catch(()=>null)]));
   function ramp(param,value,time=.18){param.cancelScheduledValues(ctx.currentTime);param.setTargetAtTime(value,ctx.currentTime,time/3)}
   function init(){if(!ctx){const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)return false;ctx=new Audio();master=ctx.createGain();master.gain.value=CONFIG.master;const limiter=ctx.createDynamicsCompressor();limiter.threshold.value=-5;limiter.knee.value=3;limiter.ratio.value=16;limiter.attack.value=.003;limiter.release.value=.12;master.connect(limiter);const soft=ctx.createBiquadFilter();soft.type='lowpass';soft.frequency.value=4200;soft.Q.value=.5;limiter.connect(soft);soft.connect(ctx.destination)}if(ctx.state==='suspended')ctx.resume().catch(()=>{});return true}
@@ -27,8 +27,7 @@
   function stopTextures(){for(const voice of textures)stopOne(voice);textures.clear()}
   window.siteSound={setFacecam,ready,hand,portal,gradient,word,letters,stopTyping,click:()=>texture(),transition:(seconds=1)=>texture('binary',seconds),CONFIG};
   function unlock(){if(init())for(const key of Object.keys(files))buffer(key);if(facecam)startFan();state()}addEventListener('pointerdown',unlock,{capture:true});addEventListener('keydown',unlock,{capture:true});
-  addEventListener('click',()=>texture(),{capture:true});
-  addEventListener('message',e=>{const frame=document.querySelector('#artwork-host iframe');if(e.origin===location.origin&&e.source===frame?.contentWindow&&e.data?.type==='background-ripple')texture()});
+  addEventListener('click',e=>{const control=e.target.closest('button,a[href],[role=button],[role=tab],summary,input,select,label');if(!control||control.matches(':disabled,[aria-disabled=true]')||control.closest('[inert]'))return;const now=performance.now();if(now-lastControlClick<2000)return;lastControlClick=now;texture()},{capture:true});
   document.addEventListener('visibilitychange',()=>{if(document.hidden){stopFan();stopTyping();stopTextures();blingToken++;stopOne(bling);bling=null}else if(facecam)startFan()});
   addEventListener('pagehide',()=>{facecam=false;stopFan();stopTyping();blingToken++;stopOne(bling);ctx?.close()});state();
 })();
