@@ -5,6 +5,7 @@ function resize(){w=innerWidth;h=innerHeight;step=Number(getComputedStyle(docume
 const settings=()=>{const s=getComputedStyle(document.documentElement),n=(k,d)=>Number(s.getPropertyValue('--site-'+k).trim()||d);return {speed:n('gradientSpeed',1),grain:n('gradientNoise',0),noiseSpeed:n('noiseSpeed',1),radius:n('revealRadius',4),pink:s.getPropertyValue('--site-gradientPink').trim()||'#ff619c',peach:s.getPropertyValue('--site-gradientPeach').trim()||'#ffae7b',cream:s.getPropertyValue('--site-gradientCream').trim()||'#ffe3d6'}};
 function gradient(now){window.glowBackdrop.render(fc,now,settings(),field.width,field.height)}
 
+window.portalBackground=()=>{const now=performance.now();if(now-textureAt>33){gradient(now);textureAt=now}return field};
 function active(){return !document.hidden}
 function pointer(e){if(!pointerAt||Math.hypot(e.clientX-pointerAt.x,e.clientY-pointerAt.y)>.5)lastPointerMotion=performance.now();pointerAt={x:e.clientX,y:e.clientY};schedule()}
 let retractAt=0,retractFrom=1,reverseDone=null;
