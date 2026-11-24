@@ -92,3 +92,9 @@ body[data-folder=info]{background:#000!important}#info-panel{background:transpar
 #info-garden{position:fixed;inset:0;width:100%;height:100%;z-index:2;pointer-events:none}
 @media(min-width:1500px){#info-panel{padding-inline:max(8vw,calc((100vw - 1350px)/2));gap:140px}}
 @media(max-width:750px){#info-panel{grid-template-columns:1fr;gap:40px;padding:46px 28px 170px}#info-panel .document-column{max-width:520px;font-size:14px}#info-panel .info-emphasis,#info-panel button.info-emphasis{font-size:20px}#info-panel .info-identity .info-emphasis{font-size:18px}}
+
+body[data-folder=info]{background:#f9f9f9!important}
+#info-panel .document-column{color:#070707;font-family:Consolas,"Liberation Mono",monospace;font-weight:400}
+#info-panel .info-label{color:#070707;font-family:inherit}
+#info-panel .info-citation,#info-panel .info-meta{color:#555}
+#info-panel .info-citation a:hover,#info-panel .info-meta a:hover{color:#070707}
