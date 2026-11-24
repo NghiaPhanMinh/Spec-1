@@ -12,7 +12,7 @@
     button.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();button.click()}});
   }
   let origin=0,raf=0,previous=-1;
-  function frame(now){raf=0;if(panel.hidden||document.hidden)return;if(!origin)origin=now;const phase=(now-origin)%9000,progress=phase<2000?phase/2000:phase<7000?1:1-(phase-7000)/2000,bucket=Math.floor(progress*1000);if(bucket!==previous){previous=bucket;for(const letters of items){const count=Math.floor(progress*letters.length);letters.forEach((letter,index)=>{letter.style.visibility=index<count?'visible':'hidden';letter.classList.toggle('typing-head',progress<1&&index===Math.max(0,count-1))})}panel.dataset.typePhase=phase<2000?'typing':phase<7000?'holding':'erasing'}raf=requestAnimationFrame(frame)}
+  function frame(now){raf=0;if(panel.hidden||document.hidden)return;if(!origin)origin=now;const phase=(now-origin)%11000,progress=phase<3000?phase/3000:phase<8000?1:1-(phase-8000)/3000,bucket=Math.floor(progress*1000);if(bucket!==previous){previous=bucket;for(const letters of items){const count=Math.floor(progress*letters.length);letters.forEach((letter,index)=>{letter.style.visibility=index<count?'visible':'hidden';letter.classList.toggle('typing-head',progress<1&&index===Math.max(0,count-1))})}panel.dataset.typePhase=phase<3000?'typing':phase<8000?'holding':'erasing'}raf=requestAnimationFrame(frame)}
   function start(){if(!panel.hidden&&!document.hidden&&!raf){origin=0;previous=-1;raf=requestAnimationFrame(frame)}}
   new MutationObserver(()=>{cancelAnimationFrame(raf);raf=0;start()}).observe(panel,{attributes:true,attributeFilter:['hidden']});document.addEventListener('visibilitychange',()=>{cancelAnimationFrame(raf);raf=0;start()});start();
 })();
