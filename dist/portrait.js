@@ -32,7 +32,7 @@ const decisions=[
 ];
 const outlineTint=document.createElement("canvas"),ot=outlineTint.getContext("2d");
 const outline=document.createElement("canvas"),oc=outline.getContext("2d");outline.width=512;outline.height=384;
-let pageBackground='#f9f9f9',pageGridColor='#000000',pageGridAlpha=.1;let gridOffsetX=0,gridOffsetY=0,gridStep=0;let width, height, tileSize, quoteWidth, quoteHeight, hand = null, handAt = 0;
+let viewportLeft=0,viewportTop=0;let pageBackground='#f9f9f9',pageGridColor='#000000',pageGridAlpha=.1;let gridOffsetX=0,gridOffsetY=0,gridStep=0;let width, height, tileSize, quoteWidth, quoteHeight, hand = null, handAt = 0;
 let calm = 0, anchor = { x: 0, y: 0 }, alive = true, raf, captureTimer;
 let lastDraw=0;
 let prev = performance.now(), lastLayout = 0, lastNoise = 0, lastHand = 0, lastDrop = 0;
@@ -62,7 +62,7 @@ function resize() {
   anchor={x:width/2,y:height/2};
 }
 resize(); addEventListener('resize',resize);
-function syncViewportGrid(){try{const frame=window.frameElement,style=parent.getComputedStyle(parent.document.documentElement),step=Number(style.getPropertyValue('--site-gridSpacing'))||15;if(step!==tileSize){gridStep=step;resize()}pageBackground=style.getPropertyValue('--site-background').trim()||'#f9f9f9';pageGridColor=style.getPropertyValue('--site-gridColor').trim()||'#000';pageGridAlpha=Number(style.getPropertyValue('--site-gridLineOpacity'))||0;const rect=frame.getBoundingClientRect(),dx=((-rect.left%step)+step)%step,dy=((-rect.top%step)+step)%step;if(Math.abs(dx-gridOffsetX)>.01||Math.abs(dy-gridOffsetY)>.01){gridOffsetX=dx;gridOffsetY=dy;for(const cell of tiles){cell.x=(cell.col+.5)*step+dx;cell.y=(cell.row+.5)*step+dy}lastLayout=-Infinity}}catch{}}
+function syncViewportGrid(){try{const frame=window.frameElement,style=parent.getComputedStyle(parent.document.documentElement),step=Number(style.getPropertyValue('--site-gridSpacing'))||15;if(step!==tileSize){gridStep=step;resize()}pageBackground=style.getPropertyValue('--site-background').trim()||'#f9f9f9';pageGridColor=style.getPropertyValue('--site-gridColor').trim()||'#000';pageGridAlpha=Number(style.getPropertyValue('--site-gridLineOpacity'))||0;const rect=frame.getBoundingClientRect();viewportLeft=rect.left;viewportTop=rect.top;const dx=((-rect.left%step)+step)%step,dy=((-rect.top%step)+step)%step;if(Math.abs(dx-gridOffsetX)>.01||Math.abs(dy-gridOffsetY)>.01){gridOffsetX=dx;gridOffsetY=dy;for(const cell of tiles){cell.x=(cell.col+.5)*step+dx;cell.y=(cell.row+.5)*step+dy}lastLayout=-Infinity}}catch{}}
 
 addEventListener('keydown',e=>{if(e.code==='BracketRight'&&!e.repeat){e.preventDefault();parent.postMessage('toggle-adjustments',location.origin)}if(e.code==='Digit2'&&!e.repeat)parent.postMessage('switch-mode',location.origin)});
 
@@ -148,7 +148,7 @@ function drawTransfer(now){if(calm<=0||calm>=1||!transferGeometry)return;updateT
   if(opacity<.012)continue;ctx.globalAlpha=opacity;ctx.fillText(opinionGlyph(cell.x,cell.y,phraseTime),cell.x,cell.y);
  }ctx.restore();
 }
-function opinionGlyph(x,y,now){const epoch=Math.floor(now/2000),row=Math.floor(y/tileSize),col=Math.floor(x/tileSize),block=Math.floor(col/44);const pick=Math.floor(hash(row+epoch*17,block+epoch*31)*decisions.length),phrase=decisions[pick].toUpperCase()+' ';return phrase[(col%44)%phrase.length]}
+function opinionGlyph(x,y,now){try{return parent.siteGridGlyph(x+viewportLeft,y+viewportTop)}catch{return ' '}}
 function draw(now) {
   if(!alive)return;
   if(now-lastDraw<32){raf=requestAnimationFrame(draw);return}lastDraw=now;
