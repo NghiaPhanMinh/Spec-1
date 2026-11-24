@@ -15,7 +15,7 @@ let tiles = [], mask, luminance, previousLuma, model, segment, stream;
 let sourceCenter={x:0,y:0},transferSource={x:0,y:0},phraseTime=0,handConfirmations=0,transferAxis=null,transferGeometry=null,bodyBounds=null,transferBounds=null;
 let transferCells=[],transferTargets=[],transferRoutes=new Map(),transferTargetKey='',contourBusy=false,lastContour=0;
 const contourWorker=new Worker(new URL('./contour-worker.js?v=bounded-15',import.meta.url),{type:'module'});
-let buildStarted=0,artBuild=0,outlineBuild=0,exitingAt=0;let contourPaths=[],contourLength=0,contourDirty=true,lastContourReveal=-1;let previouslyRaised=false,previousFlight=0;const TRANSFER_SECONDS=3;const messageFonts=['Helvetica,Arial,sans-serif'];let messageFont=messageFonts[0];
+let buildStarted=0,artBuild=0,outlineBuild=0,exitingAt=0;let contourPaths=[],contourLength=0,contourDirty=true,lastContourReveal=-1;let previouslyRaised=false;const TRANSFER_SECONDS=3;const messageFonts=['Helvetica,Arial,sans-serif'];let messageFont=messageFonts[0];
 const bodyLayer=document.createElement('canvas'),bc=bodyLayer.getContext('2d');
 const maskLayer=document.createElement('canvas'),mc=maskLayer.getContext('2d');maskLayer.width=512;maskLayer.height=384;
 const decisions=[
@@ -154,10 +154,10 @@ function draw(now) {
   if(now-lastDraw<32){raf=requestAnimationFrame(draw);return}lastDraw=now;
   const elapsed=Math.max(0,(now-prev)/1000),dt=Math.min(elapsed,.05);prev=now;
   if(mask&&!buildStarted)buildStarted=now;const buildT=buildStarted?Math.max(0,(now-buildStarted)/3200):0;artBuild=smooth(0,1,buildT);outlineBuild=smooth(.3,1,buildT);if(exitingAt){const fade=1-smooth(0,1300,now-exitingAt);artBuild*=fade;outlineBuild*=fade}
-  const raised=hand&&now-handAt<650;if(raised){if(!heldPalmSince)heldPalmSince=now}else heldPalmSince=0;const portalTarget=raised&&now-heldPalmSince>=5000?1:0;if(portalTarget&&handPortal===0){try{parent.siteSound?.bling()}catch{}}handPortal=clamp(handPortal+(portalTarget?dt:-dt)/2.2,0,1);
+  const raised=hand&&now-handAt<650;if(raised){if(!heldPalmSince)heldPalmSince=now}else heldPalmSince=0;const portalTarget=raised&&now-heldPalmSince>=5000?1:0;handPortal=clamp(handPortal+(portalTarget?dt:-dt)/2.2,0,1);
   try{parent.siteSound?.portal(handPortal)}catch{}
-  const beforeCalm=calm;calm=clamp(calm+((raised||handPortal>0)?elapsed:-elapsed)/TRANSFER_SECONDS,0,1);
-  try{if(!!raised!==previouslyRaised)parent.siteSound?.hand(!!raised);const direction=calm>beforeCalm?1:calm<beforeCalm?-1:0;if(direction&&direction!==previousFlight)parent.siteSound?.fly();previousFlight=direction}catch{}
+  calm=clamp(calm+((raised||handPortal>0)?elapsed:-elapsed)/TRANSFER_SECONDS,0,1);
+  try{if(!!raised!==previouslyRaised)parent.siteSound?.hand(!!raised);}catch{}
   if(raised&&!previouslyRaised){messageFont=messageFonts[Math.floor(Math.random()*messageFonts.length)];messageKey='';transferSource={...sourceCenter};transferBounds=bodyBounds?{...bodyBounds}:null;transferAxis=null;phraseTime=now;transferCells=snapshotSources();transferTargetKey='';}previouslyRaised=!!raised;
   syncViewportGrid();
   if(now-lastLayout>85){layout(now);lastLayout=now}
