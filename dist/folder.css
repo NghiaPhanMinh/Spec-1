@@ -98,3 +98,20 @@ body[data-folder=info]{background:#f9f9f9!important}
 #info-panel .info-label{color:#070707;font-family:inherit}
 #info-panel .info-citation,#info-panel .info-meta{color:#555}
 #info-panel .info-citation a:hover,#info-panel .info-meta a:hover{color:#070707}
+
+/* Wider, balanced document columns; the tag and the start of its text share a line. */
+#info-panel{padding:clamp(48px,5.4vw,82px) 5.5vw 170px;gap:clamp(48px,8vw,150px);align-content:start}
+#info-panel .document-column{max-width:none;margin:0;font-size:clamp(16px,1.18vw,20px);line-height:1.45;text-transform:uppercase}
+#info-panel .info-label{font-size:clamp(11px,.78vw,14px);text-transform:none;white-space:nowrap}
+#info-panel p{margin:0 0 30px;text-align:left}
+#info-panel .info-identity,#info-panel .info-group,#info-panel .info-course,#info-panel .info-sdg,#info-panel .info-cta{font-size:clamp(20px,1.48vw,27px);line-height:1.4}
+#info-panel .info-members{font-size:clamp(15px,1.08vw,19px);line-height:1.5}
+#info-panel [data-info-effect]{display:inline;padding:0;margin:0;border:0;background:none;font:inherit;letter-spacing:inherit;line-height:inherit;cursor:pointer;text-decoration:none;text-align:left;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+#info-panel [data-info-effect]:hover,#info-panel [data-info-effect]:focus-visible{background:var(--effect-color);color:#fff;outline:none}
+#info-panel .info-quotation>p{display:block;margin:0}#info-panel .info-quotation{margin-bottom:30px}
+#info-panel .info-citation{font-size:12px;margin-top:8px!important}
+#info-panel .info-meta{font-size:clamp(13px,.9vw,16px);line-height:1.7}
+#info-panel .info-type-word{display:inline;white-space:nowrap}#info-panel .info-type-letter{visibility:hidden}
+#info-panel .typing-head{box-shadow:1px 0 currentColor;animation:info-cursor .65s steps(1) infinite}
+@keyframes info-cursor{50%{box-shadow:none}}
+@media(max-width:850px){#info-panel{grid-template-columns:1fr;padding:44px 28px 180px;gap:16px}#info-panel .document-column{font-size:17px}#info-panel .info-identity,#info-panel .info-group,#info-panel .info-course,#info-panel .info-sdg,#info-panel .info-cta{font-size:20px}}
