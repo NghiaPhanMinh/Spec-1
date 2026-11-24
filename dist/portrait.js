@@ -15,7 +15,7 @@ let tiles = [], mask, luminance, previousLuma, model, segment, stream;
 let sourceCenter={x:0,y:0},transferSource={x:0,y:0},phraseTime=0,handConfirmations=0,transferAxis=null,transferGeometry=null,bodyBounds=null,transferBounds=null;
 let transferCells=[],transferTargets=[],transferRoutes=new Map(),transferTargetKey='',contourBusy=false,lastContour=0;
 const contourWorker=new Worker(new URL('./contour-worker.js?v=bounded-15',import.meta.url),{type:'module'});
-let buildStarted=0,artBuild=0,outlineBuild=0,exitingAt=0;let contourPaths=[],contourLength=0,contourDirty=true,lastContourReveal=-1;let previouslyRaised=false;const TRANSFER_SECONDS=3;const STOP_MESSAGE='No woman in the room? Pause the decision.';const messageFonts=['Helvetica,Arial,sans-serif'];let messageFont=messageFonts[0];
+let buildStarted=0,artBuild=0,outlineBuild=0,exitingAt=0;let contourPaths=[],contourLength=0,contourDirty=true,lastContourReveal=-1;let previouslyRaised=false,returnSoundPlayed=false,portraitSoundReady=false;const TRANSFER_SECONDS=3;const STOP_MESSAGE='No woman in the room? Pause the decision.';const messageFonts=['Helvetica,Arial,sans-serif'];let messageFont=messageFonts[0];
 const bodyLayer=document.createElement('canvas'),bc=bodyLayer.getContext('2d');
 const maskLayer=document.createElement('canvas'),mc=maskLayer.getContext('2d');maskLayer.width=512;maskLayer.height=384;
 const decisions=[
@@ -91,7 +91,6 @@ function fitMessage(){const pad=24,available=Math.max(width*.46,2*Math.min(ancho
  const m=messageLayout;m.x=clamp(anchor.x,m.w/2+pad,width-m.w/2-pad);m.y=clamp(anchor.y,m.h/2+pad,height-m.h/2-pad);return m;
 }
 function drawMessage(now){const reveal=calm>0?1:0;if(reveal<.005)return;const m=fitMessage();ctx.save();ctx.globalAlpha=reveal;ctx.fillStyle=`rgb(${Math.round(calm*255)},${Math.round(calm*20)},${Math.round(255-calm*108)})`;ctx.font=`800 ${tileSize*.76}px monospace`;ctx.textAlign='center';ctx.textBaseline='middle';
- for(const cell of tiles){const y=Math.floor(cell.y-m.y+m.h/2),x=Math.floor(cell.x-m.x+m.w/2-typeFlow(y,now));if(x<0||y<0||x>=m.w||y>=m.h||messageData[(x+y*m.w)*4+3]<120)continue;ctx.globalAlpha=sentenceVisibility(cell.x,cell.y);ctx.fillText(alphabet[Math.min(25,Math.floor(cell.seed*26))],cell.x,cell.y)}
  mo.globalCompositeOperation='source-in';mo.fillStyle=ctx.fillStyle;mo.fillRect(0,0,m.w,m.h);mo.globalCompositeOperation='source-over';
  mr.globalCompositeOperation='source-over';mr.clearRect(0,0,m.w,m.h);mr.drawImage(messageOutline,0,0);
  const ax=transferGeometry.axis,r=transferGeometry.sentence,cx=m.w/2,cy=m.h/2,mid=m.x*ax.x+m.y*ax.y;
@@ -148,17 +147,19 @@ function drawTransfer(now){if(calm<=0||calm>=1||!transferGeometry)return;updateT
   if(opacity<.012)continue;ctx.globalAlpha=opacity;ctx.fillText(opinionGlyph(cell.x,cell.y,phraseTime),cell.x,cell.y);
  }ctx.restore();
 }
-function opinionGlyph(x,y,now){try{return parent.siteGridGlyph(x+viewportLeft,y+viewportTop)}catch{return ' '}}
+function opinionGlyph(x,y,now){const row=Math.floor((y+viewportTop)/tileSize),col=Math.floor((x+viewportLeft)/tileSize),epoch=Math.floor(now/3500),phrase=decisions[((row*7+epoch)%decisions.length+decisions.length)%decisions.length].toUpperCase()+' ';return phrase[((col+row*3)%phrase.length+phrase.length)%phrase.length]}
 function draw(now) {
   if(!alive)return;
   if(now-lastDraw<32){raf=requestAnimationFrame(draw);return}lastDraw=now;
   const elapsed=Math.max(0,(now-prev)/1000),dt=Math.min(elapsed,.05);prev=now;
-  if(mask&&!buildStarted)buildStarted=now;const buildT=buildStarted?Math.max(0,(now-buildStarted)/3200):0;artBuild=smooth(0,1,buildT);outlineBuild=smooth(.3,1,buildT);if(exitingAt){const fade=1-smooth(0,1300,now-exitingAt);artBuild*=fade;outlineBuild*=fade}
-  const raised=hand&&now-handAt<650;if(raised){if(!heldPalmSince)heldPalmSince=now}else heldPalmSince=0;const portalTarget=raised&&now-heldPalmSince>=5000?1:0;handPortal=clamp(handPortal+(portalTarget?dt:-dt)/2.2,0,1);
+  if(mask&&!buildStarted){buildStarted=now;try{parent.siteSound?.transition(3.2)}catch{}} const buildT=buildStarted?Math.max(0,(now-buildStarted)/3200):0;artBuild=smooth(0,1,buildT);outlineBuild=smooth(.3,1,buildT);if(exitingAt){const fade=1-smooth(0,1300,now-exitingAt);artBuild*=fade;outlineBuild*=fade}
+  if(!portraitSoundReady&&artBuild>=.95&&bodyBounds){portraitSoundReady=true;try{parent.siteSound?.ready()}catch{}}
+  const raised=hand&&now-handAt<650;if(raised){if(!heldPalmSince)heldPalmSince=now}else heldPalmSince=0;const portalTarget=raised&&now-heldPalmSince>=5000?1:0;if(portalTarget&&handPortal===0){try{parent.siteSound?.transition(2.2)}catch{}}handPortal=clamp(handPortal+(portalTarget?dt:-dt)/2.2,0,1);
   try{parent.siteSound?.portal(handPortal,Math.hypot(width,height)*smooth(0,1,handPortal)>=Math.max(...[[0,0],[width,0],[0,height],[width,height]].map(([x,y])=>Math.hypot(x-anchor.x,y-anchor.y))))}catch{}
-  calm=clamp(calm+((raised||handPortal>0)?elapsed:-elapsed)/TRANSFER_SECONDS,0,1);
+  const previousCalm=calm;calm=clamp(calm+((raised||handPortal>0)?elapsed:-elapsed)/TRANSFER_SECONDS,0,1);
+  if(calm<previousCalm&&!returnSoundPlayed){returnSoundPlayed=true;try{parent.siteSound?.transition(3);parent.siteSound?.letters(STOP_MESSAGE,TRANSFER_SECONDS,true)}catch{}}
   try{if(!!raised!==previouslyRaised)parent.siteSound?.hand(!!raised);}catch{}
-  if(raised&&!previouslyRaised){try{parent.siteSound?.letters(STOP_MESSAGE,TRANSFER_SECONDS)}catch{}messageFont=messageFonts[Math.floor(Math.random()*messageFonts.length)];messageKey='';transferSource={...sourceCenter};transferBounds=bodyBounds?{...bodyBounds}:null;transferAxis=null;phraseTime=now;transferCells=snapshotSources();transferTargetKey='';}previouslyRaised=!!raised;
+  if(raised&&!previouslyRaised){returnSoundPlayed=false;try{parent.siteSound?.transition(3);parent.siteSound?.letters(STOP_MESSAGE,TRANSFER_SECONDS)}catch{}messageFont=messageFonts[Math.floor(Math.random()*messageFonts.length)];messageKey='';transferSource={...sourceCenter};transferBounds=bodyBounds?{...bodyBounds}:null;transferAxis=null;phraseTime=now;transferCells=snapshotSources();transferTargetKey='';}previouslyRaised=!!raised;
   syncViewportGrid();
   if(now-lastLayout>85){layout(now);lastLayout=now}
   if(raised){
