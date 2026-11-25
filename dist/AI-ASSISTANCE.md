@@ -36,3 +36,17 @@ Commented: explain what a function is responsible for, what its inputs/state mea
 Examples to explain: why terminal clicks are excluded from portals; why a five-second palm hold is separate from the three-second text transfer; why the portrait loop stops when the iframe unloads.
 
 This record summarises conversation evidence; it is not a verbatim prompt log or a claim about an unknown model version.
+
+## Author-reported review and parameter changes
+
+At final review the author reports reviewing the AI-assisted implementation, commenting on AI use and adjusting selected parameters/metrics. This credits review, design direction and parameter changes rather than sole authorship of the implementation. Specific parameter values or a manual-edit diff have not been supplied, so no particular value change is attributed here.
+
+The reported review focuses on:
+
+- Background grid and letter generation: site-grid.js.
+- Camera silhouette and contour lines: portrait.js, contour-worker.js, portrait-geometry.js.
+- Transitions and hand-positioned text: portrait.js, dialogue.js, stop-gesture.js.
+- Noise/gradient generation and motion: sketch.js.
+- Blue-block and flower growth: uncover.js; related Info growth rules in info-garden.js.
+
+Codex remains credited for generating/revising most project-specific code. Third-party p5.js and MediaPipe components retain their separate credits.
