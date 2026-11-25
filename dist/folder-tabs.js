@@ -1,9 +1,112 @@
+/**
+ * Pause decision — Draws and animates the folder-tab outlines while retaining continuous frame edges.
+ * AI-assisted implementation, iteratively revised to the author's design direction.
+ * Library credits and licenses: THIRD-PARTY-NOTICES.md. Review guide: CODE-GUIDE.md.
+ * Project code: GPL-3.0-or-later (see LICENSE); vendor licenses remain unchanged.
+ */
 // Animate the folder edge itself so the tab and its rule never disconnect.
-(()=>{const tabs=[...document.querySelectorAll('.folder-tab')],ns='http://www.w3.org/2000/svg',frame=document.createElementNS(ns,'svg'),edge=document.createElementNS(ns,'path');frame.id='folder-outline';frame.setAttribute('aria-hidden','true');frame.append(edge);document.body.append(frame);
-const reduced=matchMedia('(prefers-reduced-motion: reduce)'),poses=tabs.map(t=>({b:t.classList.contains('selected')?50:40,t:t.classList.contains('selected')?7:15,pick:0}));let raf=0,last=0,hovered=null;
-function draw(now=performance.now()){const w=document.documentElement.clientWidth,h=innerHeight,dt=Math.min((now-last)/1000||.016,.05);last=now;let moving=false;frame.setAttribute('viewBox',`0 0 ${w} ${h}`);edge.setAttribute('d',`M ${w-3} 60 V ${h-15} Q ${w-3} ${h-3} ${w-15} ${h-3} H 14 Q 2 ${h-3} 2 ${h-15} V 50`);
-tabs.forEach((tab,i)=>{const p=poses[i],selected=tab.classList.contains('selected'),targetB=selected?50:(hovered===i?32:40),targetT=selected?7:(hovered===i?3:15),k=reduced.matches?1:1-Math.exp(-dt*14);p.b+=(targetB-p.b)*k;p.t+=(targetT-p.t)*k;if(Math.abs(p.b-targetB)<.03)p.b=targetB;if(Math.abs(p.t-targetT)<.03)p.t=targetT;const elapsed=now-p.pick,pulse=p.pick&&elapsed<680&&!reduced.matches?Math.sin(elapsed/680*Math.PI*2)*Math.exp(-elapsed/320)*7:0;if(Math.abs(p.b-targetB)>.03||Math.abs(p.t-targetT)>.03||pulse) moving=true;const b=p.b-pulse*.6,t=Math.max(2,p.t-pulse),x=tab.offsetLeft,r=tab.offsetWidth,svg=tab.querySelector('svg');const d=`M 2 ${b+10} Q 2 ${b} 14 ${b} H ${x} C ${x+10} ${b} ${x+12} ${t} ${x+28} ${t} H ${x+r-32} C ${x+r-15} ${t} ${x+r-13} ${b} ${x+r} ${b} H ${w-14} Q ${w-3} ${b} ${w-3} ${b+10}`;svg.style.width=w+'px';svg.setAttribute('viewBox',`0 0 ${w} 64`);svg.querySelector('.tab-edge').setAttribute('d',d);svg.querySelector('.tab-fill').setAttribute('d',d+' V 64 H 2 Z');});raf=moving?requestAnimationFrame(draw):0;}
-function schedule(){if(!raf){last=performance.now();raf=requestAnimationFrame(draw)}}
-tabs.forEach((tab,i)=>{tab.addEventListener('pointerenter',()=>{if(tab.classList.contains('selected'))return;hovered=i;tab.style.setProperty('--tab-hover-offset','-5px');schedule()});tab.addEventListener('pointerleave',()=>{hovered=null;tab.style.removeProperty('--tab-hover-offset');schedule()})});
-tabs.forEach((tab,i)=>tab.addEventListener('click',()=>{poses[i].pick=performance.now();schedule();if(!reduced.matches){const panel=document.getElementById(tab.getAttribute('aria-controls'));panel.getAnimations().forEach(a=>a.cancel());panel.animate([{opacity:.8,translate:'0 20px'},{opacity:1,translate:'0 -3px',offset:.72},{opacity:1,translate:'0 0'}],{duration:680,easing:'cubic-bezier(.2,.8,.2,1)'})}}));
-new MutationObserver(schedule).observe(document.querySelector('.folder-tabs'),{subtree:true,attributes:true,attributeFilter:['class']});addEventListener('resize',schedule);draw();})();
+(() => {
+  const tabs = [...document.querySelectorAll(".folder-tab")],
+    ns = "http://www.w3.org/2000/svg",
+    frame = document.createElementNS(ns, "svg"),
+    edge = document.createElementNS(ns, "path");
+  frame.id = "folder-outline";
+  frame.setAttribute("aria-hidden", "true");
+  frame.append(edge);
+  document.body.append(frame);
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)"),
+    poses = tabs.map((t) => ({
+      b: t.classList.contains("selected") ? 50 : 40,
+      t: t.classList.contains("selected") ? 7 : 15,
+      pick: 0,
+    }));
+  let raf = 0,
+    last = 0,
+    hovered = null;
+  // Advance time-dependent state and composite the current frame; no camera frames are uploaded.
+  function draw(now = performance.now()) {
+    const w = document.documentElement.clientWidth,
+      h = innerHeight,
+      dt = Math.min((now - last) / 1000 || 0.016, 0.05);
+    last = now;
+    let moving = false;
+    frame.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    edge.setAttribute(
+      "d",
+      `M ${w - 3} 60 V ${h - 15} Q ${w - 3} ${h - 3} ${w - 15} ${h - 3} H 14 Q 2 ${h - 3} 2 ${h - 15} V 50`,
+    );
+    tabs.forEach((tab, i) => {
+      const p = poses[i],
+        selected = tab.classList.contains("selected"),
+        targetB = selected ? 50 : hovered === i ? 32 : 40,
+        targetT = selected ? 7 : hovered === i ? 3 : 15,
+        k = reduced.matches ? 1 : 1 - Math.exp(-dt * 14);
+      p.b += (targetB - p.b) * k;
+      p.t += (targetT - p.t) * k;
+      if (Math.abs(p.b - targetB) < 0.03) p.b = targetB;
+      if (Math.abs(p.t - targetT) < 0.03) p.t = targetT;
+      const elapsed = now - p.pick,
+        pulse =
+          p.pick && elapsed < 680 && !reduced.matches
+            ? Math.sin((elapsed / 680) * Math.PI * 2) * Math.exp(-elapsed / 320) * 7
+            : 0;
+      if (Math.abs(p.b - targetB) > 0.03 || Math.abs(p.t - targetT) > 0.03 || pulse)
+        moving = true;
+      const b = p.b - pulse * 0.6,
+        t = Math.max(2, p.t - pulse),
+        x = tab.offsetLeft,
+        r = tab.offsetWidth,
+        svg = tab.querySelector("svg");
+      const d = `M 2 ${b + 10} Q 2 ${b} 14 ${b} H ${x} C ${x + 10} ${b} ${x + 12} ${t} ${x + 28} ${t} H ${x + r - 32} C ${x + r - 15} ${t} ${x + r - 13} ${b} ${x + r} ${b} H ${w - 14} Q ${w - 3} ${b} ${w - 3} ${b + 10}`;
+      svg.style.width = w + "px";
+      svg.setAttribute("viewBox", `0 0 ${w} 64`);
+      svg.querySelector(".tab-edge").setAttribute("d", d);
+      svg.querySelector(".tab-fill").setAttribute("d", d + " V 64 H 2 Z");
+    });
+    raf = moving ? requestAnimationFrame(draw) : 0;
+  }
+  function schedule() {
+    if (!raf) {
+      last = performance.now();
+      raf = requestAnimationFrame(draw);
+    }
+  }
+  tabs.forEach((tab, i) => {
+    tab.addEventListener("pointerenter", () => {
+      if (tab.classList.contains("selected")) return;
+      hovered = i;
+      tab.style.setProperty("--tab-hover-offset", "-5px");
+      schedule();
+    });
+    tab.addEventListener("pointerleave", () => {
+      hovered = null;
+      tab.style.removeProperty("--tab-hover-offset");
+      schedule();
+    });
+  });
+  tabs.forEach((tab, i) =>
+    tab.addEventListener("click", () => {
+      poses[i].pick = performance.now();
+      schedule();
+      if (!reduced.matches) {
+        const panel = document.getElementById(tab.getAttribute("aria-controls"));
+        panel.getAnimations().forEach((a) => a.cancel());
+        panel.animate(
+          [
+            { opacity: 0.8, translate: "0 20px" },
+            { opacity: 1, translate: "0 -3px", offset: 0.72 },
+            { opacity: 1, translate: "0 0" },
+          ],
+          { duration: 680, easing: "cubic-bezier(.2,.8,.2,1)" },
+        );
+      }
+    }),
+  );
+  new MutationObserver(schedule).observe(document.querySelector(".folder-tabs"), {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["class"],
+  });
+  addEventListener("resize", schedule);
+  draw();
+})();

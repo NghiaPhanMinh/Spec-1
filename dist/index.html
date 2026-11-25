@@ -1,83 +1,265 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#f9f9f9">
-  <meta name="description" content="Pause decision. An interactive camera artwork for SDG 5 — Gender Equality.">
-  <title>Pause decision</title>
-  <link rel="stylesheet" href="folder.css?v=prompt-50">
-  <script defer src="sound.js?v=prompt-50"></script>
-  <script defer src="modes.js?v=prompt-50"></script>
-</head>
-<body>
-  <canvas id="site-grid" aria-hidden="true"></canvas>
-  <header class="folder-bar">
-    <div class="folder-rule rule-one" aria-hidden="true"></div>
-    <div class="folder-base" aria-hidden="true"></div>
-    <nav class="folder-tabs" role="tablist" aria-label="Project documents">
-      <button id="home-tab" class="folder-tab selected" type="button" role="tab" aria-selected="true" aria-controls="home-panel" tabindex="0" data-panel="home">
-        <svg aria-hidden="true" viewBox="0 0 168 60" preserveAspectRatio="none"><path class="tab-fill" d="M0 60C7 60 9 51 12 40L19 16C22 6 27 4 38 4H130C141 4 146 6 149 16L156 40C159 51 161 60 168 60Z"/><path class="tab-edge" d="M0 60C7 60 9 51 12 40L19 16C22 6 27 4 38 4H130C141 4 146 6 149 16L156 40C159 51 161 60 168 60"/></svg>
-        <span>Home</span>
-      </button>
-      <button id="info-tab" class="folder-tab" type="button" role="tab" aria-selected="false" aria-controls="info-panel" tabindex="-1" data-panel="info">
-        <svg aria-hidden="true" viewBox="0 0 168 60" preserveAspectRatio="none"><path class="tab-fill" d="M0 60C7 60 9 51 12 40L19 16C22 6 27 4 38 4H130C141 4 146 6 149 16L156 40C159 51 161 60 168 60Z"/><path class="tab-edge" d="M0 60C7 60 9 51 12 40L19 16C22 6 27 4 38 4H130C141 4 146 6 149 16L156 40C159 51 161 60 168 60"/></svg>
-        <span>Info</span>
-      </button>
-    </nav>
-  </header>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#f9f9f9" />
+    <meta
+      name="description"
+      content="Pause decision. An interactive camera artwork for SDG 5 — Gender Equality."
+    />
+    <title>Pause decision</title>
+    <link rel="stylesheet" href="folder.css?v=submission-51" />
+    <script defer src="sound.js?v=submission-51"></script>
+    <script defer src="modes.js?v=submission-51"></script>
+  </head>
+  <body>
+    <canvas id="site-grid" aria-hidden="true"></canvas>
+    <header class="folder-bar">
+      <div class="folder-rule rule-one" aria-hidden="true"></div>
+      <div class="folder-base" aria-hidden="true"></div>
+      <nav class="folder-tabs" role="tablist" aria-label="Project documents">
+        <button
+          id="home-tab"
+          class="folder-tab selected"
+          type="button"
+          role="tab"
+          aria-selected="true"
+          aria-controls="home-panel"
+          tabindex="0"
+          data-panel="home"
+        >
+          <svg aria-hidden="true" viewBox="0 0 168 60" preserveAspectRatio="none">
+            <path
+              class="tab-fill"
+              d="M0 60C7 60 9 51 12 40L19 16C22 6 27 4 38 4H130C141 4 146 6 149 16L156 40C159 51 161 60 168 60Z"
+            />
+            <path
+              class="tab-edge"
+              d="M0 60C7 60 9 51 12 40L19 16C22 6 27 4 38 4H130C141 4 146 6 149 16L156 40C159 51 161 60 168 60"
+            />
+          </svg>
+          <span>Home</span>
+        </button>
+        <button
+          id="info-tab"
+          class="folder-tab"
+          type="button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="info-panel"
+          tabindex="-1"
+          data-panel="info"
+        >
+          <svg aria-hidden="true" viewBox="0 0 168 60" preserveAspectRatio="none">
+            <path
+              class="tab-fill"
+              d="M0 60C7 60 9 51 12 40L19 16C22 6 27 4 38 4H130C141 4 146 6 149 16L156 40C159 51 161 60 168 60Z"
+            />
+            <path
+              class="tab-edge"
+              d="M0 60C7 60 9 51 12 40L19 16C22 6 27 4 38 4H130C141 4 146 6 149 16L156 40C159 51 161 60 168 60"
+            />
+          </svg>
+          <span>Info</span>
+        </button>
+      </nav>
+    </header>
 
-  <main>
-    <section id="home-panel" role="tabpanel" aria-labelledby="home-tab">
-      <div class="quote-page">
-        <h1 class="central-quote narrative-quote" aria-label="The central question of gender equality is a question of power.">
-          <span class="quote-line opening" aria-hidden="true">&lt;title&gt;“The</span>
-          <span class="quote-line justified" aria-hidden="true"><span>central</span><span>question</span></span>
-          <span class="quote-line justified" aria-hidden="true"><span>of</span><span class="pink">gender</span><span class="pink">equality</span></span>
-          <span class="quote-line justified" aria-hidden="true"><span>is</span><span>a</span><span>question</span><span>of</span></span>
-          <span class="quote-line closing" aria-hidden="true"><strong>POWER</strong><span>”&lt;/title&gt;</span></span>
-        </h1>
-        <p class="landing-navigation">&gt;&gt;scroll up and down to navigate&lt;&lt;</p>
-      </div>
-      <section id="dialogue-page" class="dialogue-page" aria-label="A question of power: terminal dialogue" tabindex="-1">
-        <div class="terminal-header"><div><span class="terminal-prefix">C:\Users\pmnghiaa&gt;</span> <span id="abstract-text"></span><span class="abstract-cursor" aria-hidden="true"></span></div><button id="dialogue-home" type="button" hidden>skip_to_land-ing_page&lt;&lt;</button></div>
-        <div class="terminal-copy"><span class="terminal-prefix">C:\Users\pmnghiaa&gt;</span> <span id="terminal-text"></span><span class="terminal-cursor" aria-hidden="true"></span></div>
-        <p id="terminal-announcement" class="visually-hidden" aria-live="polite"></p>
-        <div class="terminal-controls"><div hidden><span class="terminal-prefix">C:\Users\pmnghiaa&gt;</span><br><button id="dialogue-back" type="button">backspace_return/</button><br><button id="dialogue-next" type="button">enter_continue</button><span id="dialogue-count" aria-hidden="true"></span></div><button id="dialogue-skip" type="button">skip_to_genera-tive_art&gt;&gt;</button></div>
+    <main>
+      <section id="home-panel" role="tabpanel" aria-labelledby="home-tab">
+        <div class="quote-page">
+          <h1
+            class="central-quote narrative-quote"
+            aria-label="The central question for gender equality is a question of power."
+          >
+            <span class="quote-line opening" aria-hidden="true">&lt;title&gt;“The</span>
+            <span class="quote-line justified" aria-hidden="true"
+              ><span>central</span><span>question</span></span
+            >
+            <span class="quote-line justified" aria-hidden="true"
+              ><span>of</span><span class="pink">gender</span
+              ><span class="pink">equality</span></span
+            >
+            <span class="quote-line justified" aria-hidden="true"
+              ><span>is</span><span>a</span><span>question</span><span>of</span></span
+            >
+            <span class="quote-line closing" aria-hidden="true"
+              ><strong>POWER</strong><span>”&lt;/title&gt;</span></span
+            >
+          </h1>
+          <p class="landing-navigation">&gt;&gt;scroll up and down to navigate&lt;&lt;</p>
+        </div>
+        <section
+          id="dialogue-page"
+          class="dialogue-page"
+          aria-label="A question of power: terminal dialogue"
+          tabindex="-1"
+        >
+          <div class="terminal-header">
+            <div>
+              <span class="terminal-prefix">C:\Users\pmnghiaa&gt;</span>
+              <span id="abstract-text"></span
+              ><span class="abstract-cursor" aria-hidden="true"></span>
+            </div>
+            <button id="dialogue-home" type="button" hidden>
+              skip_to_land-ing_page&lt;&lt;
+            </button>
+          </div>
+          <div class="terminal-copy">
+            <span class="terminal-prefix">C:\Users\pmnghiaa&gt;</span>
+            <span id="terminal-text"></span
+            ><span class="terminal-cursor" aria-hidden="true"></span>
+          </div>
+          <p id="terminal-announcement" class="visually-hidden" aria-live="polite"></p>
+          <div class="terminal-controls">
+            <div hidden>
+              <span class="terminal-prefix">C:\Users\pmnghiaa&gt;</span><br /><button
+                id="dialogue-back"
+                type="button"
+              >
+                backspace_return/</button
+              ><br /><button id="dialogue-next" type="button">enter_continue</button
+              ><span id="dialogue-count" aria-hidden="true"></span>
+            </div>
+            <button id="dialogue-skip" type="button">
+              skip_to_genera-tive_art&gt;&gt;
+            </button>
+          </div>
+        </section>
+        <section
+          id="camera-page"
+          class="camera-page"
+          aria-label="Interactive letter portrait. Raise a stop palm to pause the decisions. "
+        >
+          <div id="artwork-host"></div>
+        </section>
       </section>
-      <section id="camera-page" class="camera-page" aria-label="Interactive letter portrait. Raise a stop palm to pause the decisions. Press 2 to switch to the clock.">
-        <div id="artwork-host"></div>
-      </section>
-    </section>
 
-    <section id="info-panel" class="info-page" role="tabpanel" aria-labelledby="info-tab" hidden>
-      <div class="document-column" data-document>
-        <p class="info-identity"><span class="info-label">&lt;name&gt;</span>&nbsp;<a class="info-blue" data-info-effect="water" role="button" tabindex="0">PHAN MINH NGHIA - S4176100</a></p>
-        <p class="info-group"><span class="info-label">&lt;group name&gt;</span>&nbsp;<span>TÊN NHÓM LÀ GÌ ĐÂY?</span></p>
-        <p class="info-members"><span class="info-label">&lt;group members&gt;</span>&nbsp;<a class="info-pink" data-info-effect="flowers" role="button" tabindex="0">NGUYEN TUONG LAM - S4075107</a><br>
-          <a class="info-pink" data-info-effect="flowers" role="button" tabindex="0">NGUYEN HOANG TUE MINH - S4183536</a><br>
-          <a class="info-pink" data-info-effect="flowers" role="button" tabindex="0">NGUYEN HUYNH HANH - NHI S4033612</a><br>
-          <a class="info-blue" data-info-effect="water" role="button" tabindex="0">PHAN MINH NGHIA - S4176100</a><br>
-          <a class="info-pink" data-info-effect="flowers" role="button" tabindex="0">PHAN LE PHUONG UYEN - S4135480</a></p>
-        <p class="info-course"><span class="info-label">&lt;course&gt;</span>&nbsp;<span>COMM2754 | DIGITAL MEDIA SPECIALISATION 1 | 26T3</span></p>
-        <p class="info-affiliation"><span class="info-label">&lt;affiliation&gt;</span>&nbsp;<span>RMIT UNIVERSITY VIETNAM, SAIGON SOUTH CAMPUS, SCHOOL OF COMMUNICATIONS AND DESIGN, DIGITAL MEDIA PROGRAM</span></p>
-      </div>
-      <div class="document-column" data-document>
-        <p class="info-sdg"><span class="info-label">&lt;SDG&gt;</span>&nbsp;<a class="info-pink" data-info-effect="flowers" role="button" tabindex="0">SDG 5 - GENDER EQUALITY. ACHIEVE GENDER EQUALITY AND EMPOWER ALL WOMEN AND GIRLS.</a></p>
-        <div class="info-quotation"><p><span class="info-label">&lt;quote&gt;</span>&nbsp;<span>“THE CENTRAL QUESTION OF GENDER EQUALITY IS A QUESTION OF POWER.”</span></p><p class="info-citation">ANTÓNIO GUTERRES, 2019 · <a href="https://news.un.org/en/story/2019/03/1034571" target="_blank" rel="noopener noreferrer">UN NEWS</a></p></div>
-        <p class="info-cta"><span class="info-label">&lt;CTA&gt;</span>&nbsp;<a class="info-blue" data-info-effect="water" role="button" tabindex="0">PASS THE MIC.</a> <a class="info-pink" data-info-effect="flowers" role="button" tabindex="0">NOMINATE A WOMAN.</a> <a class="info-purple" data-info-effect="both" role="button" tabindex="0">CHANGE WHO DECIDES.</a></p>
-        <p class="info-audience"><span class="info-label">&lt;audience&gt;</span>&nbsp;<span>YOUNG ADULTS (18–25)</span></p>
-        <p class="info-meta"><a href="https://sdgs.un.org/goals/goal5" target="_blank" rel="noopener noreferrer">UN SUSTAINABLE DEVELOPMENT GOAL 5 ↗</a><br><span class="info-label">&lt;date&gt;</span>&nbsp;<time id="current-date">25 NOVEMBER 2026</time></p>
-      </div>
-    </section>
-  </main>
-  <script defer src="dialogue.js?v=prompt-50"></script>
-  <script defer src="sketch.js?v=prompt-50"></script>
-  <script defer src="uncover.js?v=prompt-50"></script>
-  <script defer src="folder-tabs.js?v=prompt-50"></script>
-  <script defer src="appearance.js?v=prompt-50"></script>
-  <script defer src="info-type.js?v=prompt-50"></script>
-  <script defer src="info-garden.js?v=prompt-50"></script>
-  <script defer src="site-grid.js?v=prompt-50"></script>
-</body>
+      <section
+        id="info-panel"
+        class="info-page"
+        role="tabpanel"
+        aria-labelledby="info-tab"
+        hidden
+      >
+        <div class="document-column" data-document>
+          <p class="info-identity">
+            <span class="info-label">&lt;name&gt;</span>&nbsp;<a
+              class="info-blue"
+              data-info-effect="water"
+              role="button"
+              tabindex="0"
+              >PHAN MINH NGHIA - S4176100</a
+            >
+          </p>
+          <p class="info-group">
+            <span class="info-label">&lt;group name&gt;</span>&nbsp;<span
+              >TÊN NHÓM LÀ GÌ ĐÂY?</span
+            >
+          </p>
+          <p class="info-members">
+            <span class="info-label">&lt;group members&gt;</span>&nbsp;<a
+              class="info-pink"
+              data-info-effect="flowers"
+              role="button"
+              tabindex="0"
+              >NGUYEN TUONG LAM - S4075107</a
+            ><br />
+            <a class="info-pink" data-info-effect="flowers" role="button" tabindex="0"
+              >NGUYEN HOANG TUE MINH - S4183536</a
+            ><br />
+            <a class="info-pink" data-info-effect="flowers" role="button" tabindex="0"
+              >NGUYEN HUYNH HANH - NHI S4033612</a
+            ><br />
+            <a class="info-blue" data-info-effect="water" role="button" tabindex="0"
+              >PHAN MINH NGHIA - S4176100</a
+            ><br />
+            <a class="info-pink" data-info-effect="flowers" role="button" tabindex="0"
+              >PHAN LE PHUONG UYEN - S4135480</a
+            >
+          </p>
+          <p class="info-course">
+            <span class="info-label">&lt;course&gt;</span>&nbsp;<span
+              >COMM2754 | DIGITAL MEDIA SPECIALISATION 1 | 26T3 | THURSDAY
+              11:30–14:30</span
+            >
+          </p>
+          <p class="info-affiliation">
+            <span class="info-label">&lt;affiliation&gt;</span>&nbsp;<span
+              >RMIT UNIVERSITY VIETNAM, SAIGON SOUTH CAMPUS, SCHOOL OF COMMUNICATION AND
+              DESIGN, DIGITAL MEDIA PROGRAM</span
+            >
+          </p>
+        </div>
+        <div class="document-column" data-document>
+          <p class="info-sdg">
+            <span class="info-label">&lt;SDG&gt;</span>&nbsp;<a
+              class="info-pink"
+              data-info-effect="flowers"
+              role="button"
+              tabindex="0"
+              >SDG 5 - GENDER EQUALITY. ACHIEVE GENDER EQUALITY AND EMPOWER ALL WOMEN AND
+              GIRLS.</a
+            >
+          </p>
+          <div class="info-quotation">
+            <p>
+              <span class="info-label">&lt;quote&gt;</span>&nbsp;<span
+                >“THE CENTRAL QUESTION FOR GENDER EQUALITY IS A QUESTION OF POWER.”</span
+              >
+            </p>
+            <p class="info-citation">
+              ANTÓNIO GUTERRES · 8 MARCH 2018 ·
+              <a
+                href="https://www.un.org/sg/en/content/sg/statements/2018-03-08/secretary-generals-video-message-for-international-womens-day-scroll-down-for-french-version"
+                target="_blank"
+                rel="noopener noreferrer"
+                >INTERNATIONAL WOMEN’S DAY VIDEO MESSAGE · UNITED NATIONS</a
+              >
+            </p>
+          </div>
+          <p class="info-cta">
+            <span class="info-label">&lt;CTA&gt;</span>&nbsp;<a
+              class="info-blue"
+              data-info-effect="water"
+              role="button"
+              tabindex="0"
+              >PASS THE MIC.</a
+            >
+            <a class="info-pink" data-info-effect="flowers" role="button" tabindex="0"
+              >NOMINATE A WOMAN.</a
+            >
+            <a class="info-purple" data-info-effect="both" role="button" tabindex="0"
+              >CHANGE WHO DECIDES.</a
+            >
+          </p>
+          <p class="info-audience">
+            <span class="info-label">&lt;audience&gt;</span>&nbsp;<span
+              >YOUNG ADULTS (18–25)</span
+            >
+          </p>
+          <p class="info-meta">
+            <a
+              href="https://sdgs.un.org/goals/goal5"
+              target="_blank"
+              rel="noopener noreferrer"
+              >UN SUSTAINABLE DEVELOPMENT GOAL 5 ↗</a
+            ><br /><span class="info-label">&lt;date&gt;</span>&nbsp;<time
+              id="current-date"
+              >25 NOVEMBER 2026</time
+            >
+          </p>
+        </div>
+      </section>
+    </main>
+    <script defer src="dialogue.js?v=submission-51"></script>
+    <script defer src="sketch.js?v=submission-51"></script>
+    <script defer src="uncover.js?v=submission-51"></script>
+    <script defer src="folder-tabs.js?v=submission-51"></script>
+    <script defer src="appearance.js?v=submission-51"></script>
+    <script defer src="info-type.js?v=submission-51"></script>
+    <script defer src="info-garden.js?v=submission-51"></script>
+    <script defer src="site-grid.js?v=submission-51"></script>
+  </body>
 </html>

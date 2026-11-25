@@ -1,53 +1,614 @@
-(()=>{
-const home=document.getElementById('home-panel'),landing=document.querySelector('.quote-page'),quote=document.querySelector('.central-quote'),page=document.getElementById('dialogue-page'),text=document.getElementById('terminal-text'),announcement=document.getElementById('terminal-announcement'),back=document.getElementById('dialogue-back'),next=document.getElementById('dialogue-next'),skip=document.getElementById('dialogue-skip'),counter=document.getElementById('dialogue-count'),camera=document.getElementById('camera-page');
-const abstractText=document.getElementById('abstract-text'),terminalHome=document.getElementById('dialogue-home');
-const sentences=[
-'For millennia, women have been constrained by oppressive customs, restrictive laws and disproportionate social expectations.',
-'Central to this subordination is the enduring construction of women as the “weaker sex”, fragile and in need of protection, a notion that paradoxically legitimised male control.',
-'Although the expansion of human rights discourse has since given women greater scope for advocacy, a structural imbalance persists: power in parliaments, corporate boardrooms and most decision-making spaces remains predominantly male.',
-'This imbalance illustrates why the central question of gender equality is, at its core, a question of power: who holds it, who is excluded from it, and who has the authority to redistribute it.',
-'Substantive change therefore requires not only the efforts of those seeking access, but also the cooperation of those who already hold power.',
-'Accordingly, contemporary feminism depends on the engagement of progressive men willing to cede decision-making space and use their influence to amplify women’s voices.',
-'Gender equality, the core objective of SDG 5, should thus be understood not as a women’s issue but as a collective societal responsibility.',
-'Hence the call to action: “Pass the mic. Nominate a woman. Change who decides.”'];
-const reduced=matchMedia('(prefers-reduced-motion: reduce)'),ease=t=>(1-Math.cos(Math.PI*t))/2,mix=(a,b,t)=>a+(b-a)*t;
-let stage=0,busy=false,raf=0,lastWheel=-Infinity,touchY=0,suspended=false,generation=0;
-const q={type:0,justify:0,highlight:0,power:0};
-const words=['<title>“The','central','question','of','gender','equality','is','a','question','of','power','”</title>'];
-quote.replaceChildren();quote.setAttribute('aria-label','The central question of gender equality is a question of power.');
-const flow=document.createElement('div'),target=document.createElement('div');flow.className='quote-flow-measure';target.className='quote-final-measure';flow.setAttribute('aria-hidden','true');target.setAttribute('aria-hidden','true');quote.append(flow,target);
-const tokens=[],letters=[];let charCount=0;
-words.forEach((word,i)=>{const measure=document.createElement('span');measure.textContent=word;measure.dataset.word=i;flow.append(measure,document.createTextNode(' '));const token=document.createElement('span');token.className='quote-word';token.setAttribute('aria-hidden','true');for(const char of word){const letter=document.createElement('span');letter.className='quote-letter';letter.textContent=char;token.append(letter);letters.push({el:letter,token:i,char,index:charCount++})}quote.append(token);tokens.push(token)});
-const rows=[[0],[1,2],[3,4,5],[6,7,8,9],[10,11]];rows.forEach((ids,row)=>{const line=document.createElement('div');line.className='measure-row measure-row-'+row;for(const id of ids){const span=document.createElement('span');span.dataset.word=id;span.textContent=words[id];line.append(span)}target.append(line)});
-const caret=document.createElement('span');caret.className='quote-caret';caret.setAttribute('aria-hidden','true');quote.append(caret);
-const highlightOrder=[4,5].flatMap(id=>letters.filter(l=>l.token===id));highlightOrder.forEach((l,i)=>l.highlightIndex=i);
-let natural=[],justified=[],selectionGroup='',selectionProgress=0;const selectionLayer=document.createElement('div');selectionLayer.className='quote-selection-layer';quote.append(selectionLayer);
-function measure(){const origin=quote.getBoundingClientRect();target.querySelector('[data-word="10"]').textContent=q.power>.35?'POWER':'power';target.querySelector('[data-word="10"]').style.fontSize=(1+q.power*.8)+'em';target.querySelector('[data-word="10"]').style.fontWeight=Math.round(400+q.power*500);natural=[...flow.querySelectorAll('[data-word]')].map(e=>{const r=e.getBoundingClientRect();return{x:r.left-origin.left,y:r.top-origin.top}});justified=[...target.querySelectorAll('[data-word]')].map(e=>{const r=e.getBoundingClientRect();return{x:r.left-origin.left,y:r.top-origin.top}});quote.style.height=Math.max(flow.offsetHeight,target.offsetHeight)+'px'}
-function render(){measure();const n=q.type*charCount;let last=null;tokens.forEach((token,i)=>{token.style.left=mix(natural[i].x,justified[i].x,q.justify)+'px';token.style.top=mix(natural[i].y,justified[i].y,q.justify)+'px';if(i===10){token.style.fontFamily='Arial,Helvetica,sans-serif';token.style.fontSize=(1+q.power*.8)+'em';token.style.fontWeight=Math.round(400+q.power*500)}});selectionLayer.replaceChildren();const selectionRects=[];const groups=selectionGroup==='all'?rows:selectionGroup==='gender'?[[4,5]]:selectionGroup==='power'?[[10]]:[];for(const ids of groups){const first=tokens[ids[0]],last=tokens[ids.at(-1)],x=parseFloat(first.style.left),y=Math.min(...ids.map(i=>parseFloat(tokens[i].style.top))),right=parseFloat(last.style.left)+last.offsetWidth,height=Math.max(...ids.map(i=>tokens[i].offsetHeight));const rect={x,y,right:x+(right-x)*selectionProgress,bottom:y+height,ids};selectionRects.push(rect);const block=document.createElement('span');Object.assign(block.style,{left:x+'px',top:y+'px',width:(rect.right-x)+'px',height:height+'px'});selectionLayer.append(block)}for(const l of letters){const visible=Math.max(0,Math.min(1,n-l.index));l.el.style.opacity=visible;const h=l.highlightIndex===undefined?0:Math.max(0,Math.min(1,q.highlight*highlightOrder.length-l.highlightIndex)),x=parseFloat(tokens[l.token].style.left)+l.el.offsetLeft,y=parseFloat(tokens[l.token].style.top);const selected=selectionRects.some(r=>r.ids.includes(l.token)&&x>=r.x-.1&&x<r.right);l.el.style.color=selected?'#fff':l.token===10?'rgb('+Math.round(mix(7,0,q.power))+','+Math.round(mix(7,75,q.power))+','+Math.round(mix(7,255,q.power))+')':`rgb(${Math.round(7+248*h)},${Math.round(7*(1-h))},${Math.round(7+205*h)})`;l.el.style.backgroundColor='transparent';if(l.token===10)l.el.textContent=q.power>.35?l.char.toUpperCase():l.char;if(visible>.1)last=l}caret.hidden=!last||!busy||q.type===1;if(last){const t=tokens[last.token];caret.style.left=(parseFloat(t.style.left)+last.el.offsetLeft+last.el.offsetWidth)+'px';caret.style.top=parseFloat(t.style.top)+'px'}quote.dataset.progress=JSON.stringify(q)}
-async function selectWords(group,duration){selectionGroup=group;await tween(duration,t=>{selectionProgress=t;render()})}function deselect(){selectionGroup='';selectionProgress=0;render()}
-function tween(duration,draw){if(reduced.matches){draw(1);return Promise.resolve()}const run=generation;return new Promise((resolve,reject)=>{let elapsed=0,last=performance.now();function tick(now){if(run!==generation){const error=new Error('Narrative reset');error.name='AbortError';reject(error);return}const delta=now-last;last=now;if(home.hidden){raf=requestAnimationFrame(tick);return}elapsed+=delta;const t=Math.min(1,elapsed/duration);draw(ease(t));if(t<1)raf=requestAnimationFrame(tick);else resolve()}raf=requestAnimationFrame(tick)})}
-async function animateQuote(changes,duration){const from={...q},ends=words.map((_,i)=>words.slice(0,i+1).join('').length);let spoken=ends.filter(end=>end<=from.type*charCount).length;await tween(duration,t=>{for(const k of Object.keys(changes))q[k]=mix(from[k],changes[k],t);render();if(changes.type>from.type){const count=ends.filter(end=>end<=q.type*charCount).length;while(spoken<count){window.siteSound?.word();spoken++}}});caret.hidden=true}
-const wipe=document.createElement('canvas');wipe.id='narrative-wipe';wipe.setAttribute('aria-hidden','true');document.body.append(wipe);const wc=wipe.getContext('2d');
-async function radial(from,to,destination){window.siteSound?.transition(1.15);const w=innerWidth,h=innerHeight,d=Math.min(devicePixelRatio||1,2),step=Number(getComputedStyle(document.documentElement).getPropertyValue('--site-gridSpacing'))||15,max=Math.hypot(w/2,h/2),light=window.siteGridSnapshot(false),dark=window.siteGridSnapshot(true);wipe.width=w*d;wipe.height=h*d;wc.setTransform(d,0,0,d,0,0);wipe.hidden=false;function paint(value){wipe.hidden=false;wc.drawImage(light,0,0,w,h);const radius=value*(max+step*2);wc.save();wc.beginPath();wc.rect(3,64,w-6,h-67);wc.clip();wc.beginPath();for(let y=Math.floor(64/step)*step;y<h;y+=step){const dy=y+step/2-h/2;if(Math.abs(dy)>=radius)continue;const half=Math.sqrt(radius*radius-dy*dy),x0=Math.floor((w/2-half)/step)*step,x1=Math.ceil((w/2+half)/step)*step;wc.rect(x0,y,x1-x0,step)}wc.clip();wc.drawImage(dark,0,0,w,h);wc.restore()}await tween(1150,t=>paint(mix(from,to,t)));window.scrollTo({top:destination.getBoundingClientRect().top+scrollY-64,behavior:'instant'});document.body.classList.toggle('terminal-active',destination===page);document.dispatchEvent(new Event('site-style-change'));await new Promise(r=>requestAnimationFrame(r));wipe.hidden=true}
-function frame(){landing.inert=stage>=5;page.inert=stage<5||stage>=ART;camera.inert=stage!==ART;document.body.dataset.narrativeStage=String(stage);document.body.dataset.narrativeBusy=String(busy);back.disabled=next.disabled=skip.disabled=terminalHome.disabled=busy;document.dispatchEvent(new Event('narrative-stage-change'))}
-async function terminalType(index,reverse=false){page.dataset.abstractOnly='false';abstractText.textContent='Abstract';const sentence=sentences[index],from=reverse?sentence.length:0,to=reverse?0:sentence.length;text.classList.toggle('emphasis',index===3);counter.textContent=` ${index+1}/${sentences.length}`;announcement.textContent=reverse?'':sentence;let spoken=0;const ends=[...sentence.matchAll(/\S+(?:\s+|$)/g)].map(m=>m.index+m[0].trimEnd().length);await tween(3000,t=>{const n=Math.floor(mix(from,to,t));text.textContent=sentence.slice(0,n);if(!reverse){const count=ends.filter(end=>end<=n).length;while(spoken<count){window.siteSound?.word();spoken++}}})}
-const ART=6+sentences.length;
-async function abstractType(){page.dataset.abstractOnly='true';announcement.textContent='Abstract';text.textContent='';abstractText.textContent='';skip.hidden=terminalHome.hidden=true;let sounded=0;await tween(2000,t=>{const count=Math.floor(t*8);abstractText.textContent='Abstract'.slice(0,count);while(sounded<count){window.siteSound?.word({layered:false});sounded++}});skip.hidden=terminalHome.hidden=false;}
-async function introAnimation(){Object.assign(q,{type:0,justify:0,highlight:0,power:0});deselect();render();await animateQuote({type:1},3000);await animateQuote({justify:1},300);await selectWords('gender',450);await animateQuote({highlight:1},650);deselect();await selectWords('power',400);await animateQuote({power:1},1200);deselect();stage=4}
-async function clearQuote(){await selectWords('all',450);q.type=0;deselect();caret.hidden=false;caret.style.animation='quote-caret-flicker .35s steps(1) infinite';caret.style.left='0px';caret.style.top='0px';await tween(350,()=>{});caret.hidden=true}
-async function resetHome(){window.siteSound?.stopTyping();generation++;const run=generation;stage=0;busy=true;document.body.dataset.artworkAllowed='false';wipe.hidden=true;text.textContent='';abstractText.textContent='';page.dataset.abstractOnly='true';window.scrollTo({top:0,behavior:'instant'});frame();try{await introAnimation()}catch(error){if(error.name!=='AbortError')console.error(error)}finally{if(run===generation){busy=false;frame()}}}
-async function move(direction,{skipToArt=false}={}){if(busy||home.hidden||suspended)return;if(direction<0&&stage===0)return;if(direction>0&&stage===ART)return;const run=generation;busy=true;frame();try{
- if(skipToArt){text.textContent='';document.body.dataset.artworkAllowed='true';await radial(stage>=5?1:0,0,camera);stage=ART;frame();return}
- if(stage<5){if(direction<0){await animateQuote({power:0},1500);await animateQuote({highlight:0},1200);await animateQuote({justify:0},300);await animateQuote({type:0},3000);stage=0}else if(stage<4){await introAnimation()}else{await window.reverseLandingEffects?.();await clearQuote();await radial(0,1,page);stage=5;await abstractType()}}
- else if(stage<ART){if(stage===5){if(direction<0){await radial(1,0,landing);await introAnimation()}else{stage=6;await terminalType(0)}}else{const index=stage-6;if(direction<0&&index===0){stage=5;await abstractType()}else if(direction>0&&index===sentences.length-1){text.textContent='';document.body.dataset.artworkAllowed='true';await radial(1,0,camera);stage=ART;frame()}else{stage+=direction;text.textContent='';await terminalType(stage-6)}}}
- else if(direction<0){const f=document.querySelector('#artwork-host iframe');f?.contentWindow.postMessage('artwork-exit',location.origin);await tween(1300,()=>{});document.body.dataset.artworkAllowed='false';document.dispatchEvent(new Event('narrative-stage-change'));await radial(0,1,page);stage=ART-1;await terminalType(sentences.length-1)}
- }catch(error){if(error.name!=='AbortError')console.error(error)}finally{if(run===generation){busy=false;frame()}}}
-function editable(target){return target.isContentEditable||target.closest('input,textarea,select,#customize-panel,[role=tablist]')}
-function wheel(e){if(home.hidden||e.target.isContentEditable||e.target.closest('input,textarea,select,#customize-panel')||e.ctrlKey)return;e.preventDefault();const now=performance.now(),quiet=now-lastWheel>240;lastWheel=now;if(!quiet||Math.abs(e.deltaY)<3)return;move(e.deltaY>0?1:-1)}
-addEventListener('wheel',wheel,{passive:false});addEventListener('touchstart',e=>touchY=e.touches[0]?.clientY||0,{passive:true});addEventListener('touchmove',e=>{if(home.hidden||e.target.isContentEditable||e.target.closest('input,textarea,select,#customize-panel'))return;e.preventDefault();const delta=touchY-e.touches[0].clientY;if(Math.abs(delta)>45){touchY=e.touches[0].clientY;move(delta>0?1:-1)}},{passive:false});
-addEventListener('keydown',e=>{if(home.hidden||editable(e.target)||e.repeat)return;if(e.target.closest('button')&&['Enter',' '].includes(e.key))return;let direction=0;if(['Enter','ArrowDown','PageDown',' '].includes(e.key))direction=1;if(['Backspace','ArrowUp','PageUp'].includes(e.key))direction=-1;if(direction){e.preventDefault();move(direction)}});
-back.addEventListener('click',()=>move(-1));next.addEventListener('click',()=>move(1));skip.addEventListener('click',()=>move(1,{skipToArt:true}));terminalHome.addEventListener('click',resetHome);
-addEventListener('message',e=>{const f=document.querySelector('#artwork-host iframe');if(e.origin===location.origin&&e.source===f?.contentWindow&&e.data?.type==='artwork-scroll'){const now=performance.now(),quiet=now-lastWheel>240;lastWheel=now;if(quiet)move(e.data.direction)}});
-new MutationObserver(()=>{suspended=home.hidden;if(suspended){wipe.hidden=true;window.siteSound?.stopTyping()}if(!suspended){const destination=stage<5?landing:stage<ART?page:camera;window.scrollTo({top:destination.getBoundingClientRect().top+scrollY-64,behavior:'instant'})}}).observe(home,{attributes:true,attributeFilter:['hidden']});
-function pin(){if(home.hidden||busy)return;const destination=stage<5?landing:stage<ART?page:camera,top=destination.getBoundingClientRect().top+scrollY-64;if(Math.abs(scrollY-top)>1)window.scrollTo({top,behavior:'instant'})}addEventListener('scroll',pin,{passive:true});addEventListener('resize',()=>{render();pin()});document.body.dataset.artworkAllowed='false';wipe.hidden=true;render();frame();document.querySelector('#home-tab').addEventListener('click',resetHome);if(!home.hidden)resetHome();
+/**
+ * Pause decision — Controls the quote animation, locked terminal sentences and reversible section transitions.
+ * AI-assisted implementation, iteratively revised to the author's design direction.
+ * Library credits and licenses: THIRD-PARTY-NOTICES.md. Review guide: CODE-GUIDE.md.
+ * Project code: GPL-3.0-or-later (see LICENSE); vendor licenses remain unchanged.
+ */
+(() => {
+  const home = document.getElementById("home-panel"),
+    landing = document.querySelector(".quote-page"),
+    quote = document.querySelector(".central-quote"),
+    page = document.getElementById("dialogue-page"),
+    text = document.getElementById("terminal-text"),
+    announcement = document.getElementById("terminal-announcement"),
+    back = document.getElementById("dialogue-back"),
+    next = document.getElementById("dialogue-next"),
+    skip = document.getElementById("dialogue-skip"),
+    counter = document.getElementById("dialogue-count"),
+    camera = document.getElementById("camera-page");
+  const abstractText = document.getElementById("abstract-text"),
+    terminalHome = document.getElementById("dialogue-home");
+  const sentences = [
+    "For millennia, women have been constrained by oppressive customs, restrictive laws and disproportionate social expectations.",
+    "Central to this subordination is the enduring construction of women as the “weaker sex”, fragile and in need of protection, a notion that paradoxically legitimised male control.",
+    "Although the expansion of human rights discourse has since given women greater scope for advocacy, a structural imbalance persists: power in parliaments, corporate boardrooms and most decision-making spaces remains predominantly male.",
+    "This imbalance illustrates why the central question of gender equality is, at its core, a question of power: who holds it, who is excluded from it, and who has the authority to redistribute it.",
+    "Substantive change therefore requires not only the efforts of those seeking access, but also the cooperation of those who already hold power.",
+    "Accordingly, contemporary feminism depends on the engagement of progressive men willing to cede decision-making space and use their influence to amplify women’s voices.",
+    "Gender equality, the core objective of SDG 5, should thus be understood not as a women’s issue but as a collective societal responsibility.",
+    "Hence the call to action: “Pass the mic. Nominate a woman. Change who decides.”",
+  ];
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)"),
+    ease = (t) => (1 - Math.cos(Math.PI * t)) / 2,
+    mix = (a, b, t) => a + (b - a) * t;
+  let stage = 0,
+    busy = false,
+    raf = 0,
+    lastWheel = -Infinity,
+    touchY = 0,
+    suspended = false,
+    generation = 0;
+  const q = { type: 0, justify: 0, highlight: 0, power: 0 };
+  const words = [
+    "<title>“The",
+    "central",
+    "question",
+    "for",
+    "gender",
+    "equality",
+    "is",
+    "a",
+    "question",
+    "of",
+    "power",
+    "”</title>",
+  ];
+  quote.replaceChildren();
+  quote.setAttribute(
+    "aria-label",
+    "The central question for gender equality is a question of power.",
+  );
+  const flow = document.createElement("div"),
+    target = document.createElement("div");
+  flow.className = "quote-flow-measure";
+  target.className = "quote-final-measure";
+  flow.setAttribute("aria-hidden", "true");
+  target.setAttribute("aria-hidden", "true");
+  quote.append(flow, target);
+  const tokens = [],
+    letters = [];
+  let charCount = 0;
+  words.forEach((word, i) => {
+    const measure = document.createElement("span");
+    measure.textContent = word;
+    measure.dataset.word = i;
+    flow.append(measure, document.createTextNode(" "));
+    const token = document.createElement("span");
+    token.className = "quote-word";
+    token.setAttribute("aria-hidden", "true");
+    for (const char of word) {
+      const letter = document.createElement("span");
+      letter.className = "quote-letter";
+      letter.textContent = char;
+      token.append(letter);
+      letters.push({ el: letter, token: i, char, index: charCount++ });
+    }
+    quote.append(token);
+    tokens.push(token);
+  });
+  const rows = [[0], [1, 2], [3, 4, 5], [6, 7, 8, 9], [10, 11]];
+  rows.forEach((ids, row) => {
+    const line = document.createElement("div");
+    line.className = "measure-row measure-row-" + row;
+    for (const id of ids) {
+      const span = document.createElement("span");
+      span.dataset.word = id;
+      span.textContent = words[id];
+      line.append(span);
+    }
+    target.append(line);
+  });
+  const caret = document.createElement("span");
+  caret.className = "quote-caret";
+  caret.setAttribute("aria-hidden", "true");
+  quote.append(caret);
+  const highlightOrder = [4, 5].flatMap((id) => letters.filter((l) => l.token === id));
+  highlightOrder.forEach((l, i) => (l.highlightIndex = i));
+  let natural = [],
+    justified = [],
+    selectionGroup = "",
+    selectionProgress = 0;
+  const selectionLayer = document.createElement("div");
+  selectionLayer.className = "quote-selection-layer";
+  quote.append(selectionLayer);
+  function measure() {
+    const origin = quote.getBoundingClientRect();
+    target.querySelector('[data-word="10"]').textContent =
+      q.power > 0.35 ? "POWER" : "power";
+    target.querySelector('[data-word="10"]').style.fontSize = 1 + q.power * 0.8 + "em";
+    target.querySelector('[data-word="10"]').style.fontWeight = Math.round(
+      400 + q.power * 500,
+    );
+    natural = [...flow.querySelectorAll("[data-word]")].map((e) => {
+      const r = e.getBoundingClientRect();
+      return { x: r.left - origin.left, y: r.top - origin.top };
+    });
+    justified = [...target.querySelectorAll("[data-word]")].map((e) => {
+      const r = e.getBoundingClientRect();
+      return { x: r.left - origin.left, y: r.top - origin.top };
+    });
+    quote.style.height = Math.max(flow.offsetHeight, target.offsetHeight) + "px";
+  }
+  // Render drifting gradient orbs and smooth waves into offscreen layers.
+  function render() {
+    measure();
+    const n = q.type * charCount;
+    let last = null;
+    tokens.forEach((token, i) => {
+      token.style.left = mix(natural[i].x, justified[i].x, q.justify) + "px";
+      token.style.top = mix(natural[i].y, justified[i].y, q.justify) + "px";
+      if (i === 10) {
+        token.style.fontFamily = "Arial,Helvetica,sans-serif";
+        token.style.fontSize = 1 + q.power * 0.8 + "em";
+        token.style.fontWeight = Math.round(400 + q.power * 500);
+      }
+    });
+    selectionLayer.replaceChildren();
+    const selectionRects = [];
+    const groups =
+      selectionGroup === "all"
+        ? rows
+        : selectionGroup === "gender"
+          ? [[4, 5]]
+          : selectionGroup === "power"
+            ? [[10]]
+            : [];
+    for (const ids of groups) {
+      const first = tokens[ids[0]],
+        last = tokens[ids.at(-1)],
+        x = parseFloat(first.style.left),
+        y = Math.min(...ids.map((i) => parseFloat(tokens[i].style.top))),
+        right = parseFloat(last.style.left) + last.offsetWidth,
+        height = Math.max(...ids.map((i) => tokens[i].offsetHeight));
+      const rect = {
+        x,
+        y,
+        right: x + (right - x) * selectionProgress,
+        bottom: y + height,
+        ids,
+      };
+      selectionRects.push(rect);
+      const block = document.createElement("span");
+      Object.assign(block.style, {
+        left: x + "px",
+        top: y + "px",
+        width: rect.right - x + "px",
+        height: height + "px",
+      });
+      selectionLayer.append(block);
+    }
+    for (const l of letters) {
+      const visible = Math.max(0, Math.min(1, n - l.index));
+      l.el.style.opacity = visible;
+      const h =
+          l.highlightIndex === undefined
+            ? 0
+            : Math.max(
+                0,
+                Math.min(1, q.highlight * highlightOrder.length - l.highlightIndex),
+              ),
+        x = parseFloat(tokens[l.token].style.left) + l.el.offsetLeft,
+        y = parseFloat(tokens[l.token].style.top);
+      const selected = selectionRects.some(
+        (r) => r.ids.includes(l.token) && x >= r.x - 0.1 && x < r.right,
+      );
+      l.el.style.color = selected
+        ? "#fff"
+        : l.token === 10
+          ? "rgb(" +
+            Math.round(mix(7, 0, q.power)) +
+            "," +
+            Math.round(mix(7, 75, q.power)) +
+            "," +
+            Math.round(mix(7, 255, q.power)) +
+            ")"
+          : `rgb(${Math.round(7 + 248 * h)},${Math.round(7 * (1 - h))},${Math.round(7 + 205 * h)})`;
+      l.el.style.backgroundColor = "transparent";
+      if (l.token === 10)
+        l.el.textContent = q.power > 0.35 ? l.char.toUpperCase() : l.char;
+      if (visible > 0.1) last = l;
+    }
+    caret.hidden = !last || !busy || q.type === 1;
+    if (last) {
+      const t = tokens[last.token];
+      caret.style.left =
+        parseFloat(t.style.left) + last.el.offsetLeft + last.el.offsetWidth + "px";
+      caret.style.top = parseFloat(t.style.top) + "px";
+    }
+    quote.dataset.progress = JSON.stringify(q);
+  }
+  async function selectWords(group, duration) {
+    selectionGroup = group;
+    await tween(duration, (t) => {
+      selectionProgress = t;
+      render();
+    });
+  }
+  function deselect() {
+    selectionGroup = "";
+    selectionProgress = 0;
+    render();
+  }
+  function tween(duration, draw) {
+    if (reduced.matches) {
+      draw(1);
+      return Promise.resolve();
+    }
+    const run = generation;
+    return new Promise((resolve, reject) => {
+      let elapsed = 0,
+        last = performance.now();
+      function tick(now) {
+        if (run !== generation) {
+          const error = new Error("Narrative reset");
+          error.name = "AbortError";
+          reject(error);
+          return;
+        }
+        const delta = now - last;
+        last = now;
+        if (home.hidden) {
+          raf = requestAnimationFrame(tick);
+          return;
+        }
+        elapsed += delta;
+        const t = Math.min(1, elapsed / duration);
+        draw(ease(t));
+        if (t < 1) raf = requestAnimationFrame(tick);
+        else resolve();
+      }
+      raf = requestAnimationFrame(tick);
+    });
+  }
+  async function animateQuote(changes, duration) {
+    const from = { ...q },
+      ends = words.map((_, i) => words.slice(0, i + 1).join("").length);
+    let spoken = ends.filter((end) => end <= from.type * charCount).length;
+    await tween(duration, (t) => {
+      for (const k of Object.keys(changes)) q[k] = mix(from[k], changes[k], t);
+      render();
+      if (changes.type > from.type) {
+        const count = ends.filter((end) => end <= q.type * charCount).length;
+        while (spoken < count) {
+          window.siteSound?.word();
+          spoken++;
+        }
+      }
+    });
+    caret.hidden = true;
+  }
+  const wipe = document.createElement("canvas");
+  wipe.id = "narrative-wipe";
+  wipe.setAttribute("aria-hidden", "true");
+  document.body.append(wipe);
+  const wc = wipe.getContext("2d");
+  async function radial(from, to, destination) {
+    window.siteSound?.transition(1.15);
+    const w = innerWidth,
+      h = innerHeight,
+      d = Math.min(devicePixelRatio || 1, 2),
+      step =
+        Number(
+          getComputedStyle(document.documentElement).getPropertyValue(
+            "--site-gridSpacing",
+          ),
+        ) || 15,
+      max = Math.hypot(w / 2, h / 2),
+      light = window.siteGridSnapshot(false),
+      dark = window.siteGridSnapshot(true);
+    wipe.width = w * d;
+    wipe.height = h * d;
+    wc.setTransform(d, 0, 0, d, 0, 0);
+    wipe.hidden = false;
+    function paint(value) {
+      wipe.hidden = false;
+      wc.drawImage(light, 0, 0, w, h);
+      const radius = value * (max + step * 2);
+      wc.save();
+      wc.beginPath();
+      wc.rect(3, 64, w - 6, h - 67);
+      wc.clip();
+      wc.beginPath();
+      for (let y = Math.floor(64 / step) * step; y < h; y += step) {
+        const dy = y + step / 2 - h / 2;
+        if (Math.abs(dy) >= radius) continue;
+        const half = Math.sqrt(radius * radius - dy * dy),
+          x0 = Math.floor((w / 2 - half) / step) * step,
+          x1 = Math.ceil((w / 2 + half) / step) * step;
+        wc.rect(x0, y, x1 - x0, step);
+      }
+      wc.clip();
+      wc.drawImage(dark, 0, 0, w, h);
+      wc.restore();
+    }
+    await tween(1150, (t) => paint(mix(from, to, t)));
+    window.scrollTo({
+      top: destination.getBoundingClientRect().top + scrollY - 64,
+      behavior: "instant",
+    });
+    document.body.classList.toggle("terminal-active", destination === page);
+    document.dispatchEvent(new Event("site-style-change"));
+    await new Promise((r) => requestAnimationFrame(r));
+    wipe.hidden = true;
+  }
+  function frame() {
+    landing.inert = stage >= 5;
+    page.inert = stage < 5 || stage >= ART;
+    camera.inert = stage !== ART;
+    document.body.dataset.narrativeStage = String(stage);
+    document.body.dataset.narrativeBusy = String(busy);
+    back.disabled = next.disabled = skip.disabled = terminalHome.disabled = busy;
+    document.dispatchEvent(new Event("narrative-stage-change"));
+  }
+  async function terminalType(index, reverse = false) {
+    page.dataset.abstractOnly = "false";
+    abstractText.textContent = "Abstract";
+    const sentence = sentences[index],
+      from = reverse ? sentence.length : 0,
+      to = reverse ? 0 : sentence.length;
+    text.classList.toggle("emphasis", index === 3);
+    counter.textContent = ` ${index + 1}/${sentences.length}`;
+    announcement.textContent = reverse ? "" : sentence;
+    let spoken = 0;
+    const ends = [...sentence.matchAll(/\S+(?:\s+|$)/g)].map(
+      (m) => m.index + m[0].trimEnd().length,
+    );
+    await tween(3000, (t) => {
+      const n = Math.floor(mix(from, to, t));
+      text.textContent = sentence.slice(0, n);
+      if (!reverse) {
+        const count = ends.filter((end) => end <= n).length;
+        while (spoken < count) {
+          window.siteSound?.word();
+          spoken++;
+        }
+      }
+    });
+  }
+  const ART = 6 + sentences.length;
+  async function abstractType() {
+    page.dataset.abstractOnly = "true";
+    announcement.textContent = "Abstract";
+    text.textContent = "";
+    abstractText.textContent = "";
+    skip.hidden = terminalHome.hidden = true;
+    let sounded = 0;
+    await tween(2000, (t) => {
+      const count = Math.floor(t * 8);
+      abstractText.textContent = "Abstract".slice(0, count);
+      while (sounded < count) {
+        window.siteSound?.word({ layered: false });
+        sounded++;
+      }
+    });
+    skip.hidden = terminalHome.hidden = false;
+  }
+  async function introAnimation() {
+    Object.assign(q, { type: 0, justify: 0, highlight: 0, power: 0 });
+    deselect();
+    render();
+    await animateQuote({ type: 1 }, 3000);
+    await animateQuote({ justify: 1 }, 300);
+    await selectWords("gender", 450);
+    await animateQuote({ highlight: 1 }, 650);
+    deselect();
+    await selectWords("power", 400);
+    await animateQuote({ power: 1 }, 1200);
+    deselect();
+    stage = 4;
+  }
+  async function clearQuote() {
+    await selectWords("all", 450);
+    q.type = 0;
+    deselect();
+    caret.hidden = false;
+    caret.style.animation = "quote-caret-flicker .35s steps(1) infinite";
+    caret.style.left = "0px";
+    caret.style.top = "0px";
+    await tween(350, () => {});
+    caret.hidden = true;
+  }
+  async function resetHome() {
+    window.siteSound?.stopTyping();
+    generation++;
+    const run = generation;
+    stage = 0;
+    busy = true;
+    document.body.dataset.artworkAllowed = "false";
+    wipe.hidden = true;
+    text.textContent = "";
+    abstractText.textContent = "";
+    page.dataset.abstractOnly = "true";
+    window.scrollTo({ top: 0, behavior: "instant" });
+    frame();
+    try {
+      await introAnimation();
+    } catch (error) {
+      if (error.name !== "AbortError") console.error(error);
+    } finally {
+      if (run === generation) {
+        busy = false;
+        frame();
+      }
+    }
+  }
+  async function move(direction, { skipToArt = false } = {}) {
+    if (busy || home.hidden || suspended) return;
+    if (direction < 0 && stage === 0) return;
+    if (direction > 0 && stage === ART) return;
+    const run = generation;
+    busy = true;
+    frame();
+    try {
+      if (skipToArt) {
+        text.textContent = "";
+        document.body.dataset.artworkAllowed = "true";
+        await radial(stage >= 5 ? 1 : 0, 0, camera);
+        stage = ART;
+        frame();
+        return;
+      }
+      if (stage < 5) {
+        if (direction < 0) {
+          await animateQuote({ power: 0 }, 1500);
+          await animateQuote({ highlight: 0 }, 1200);
+          await animateQuote({ justify: 0 }, 300);
+          await animateQuote({ type: 0 }, 3000);
+          stage = 0;
+        } else if (stage < 4) {
+          await introAnimation();
+        } else {
+          await window.reverseLandingEffects?.();
+          await clearQuote();
+          await radial(0, 1, page);
+          stage = 5;
+          await abstractType();
+        }
+      } else if (stage < ART) {
+        if (stage === 5) {
+          if (direction < 0) {
+            await radial(1, 0, landing);
+            await introAnimation();
+          } else {
+            stage = 6;
+            await terminalType(0);
+          }
+        } else {
+          const index = stage - 6;
+          if (direction < 0 && index === 0) {
+            stage = 5;
+            await abstractType();
+          } else if (direction > 0 && index === sentences.length - 1) {
+            text.textContent = "";
+            document.body.dataset.artworkAllowed = "true";
+            await radial(1, 0, camera);
+            stage = ART;
+            frame();
+          } else {
+            stage += direction;
+            text.textContent = "";
+            await terminalType(stage - 6);
+          }
+        }
+      } else if (direction < 0) {
+        const f = document.querySelector("#artwork-host iframe");
+        f?.contentWindow.postMessage("artwork-exit", location.origin);
+        await tween(1300, () => {});
+        document.body.dataset.artworkAllowed = "false";
+        document.dispatchEvent(new Event("narrative-stage-change"));
+        await radial(0, 1, page);
+        stage = ART - 1;
+        await terminalType(sentences.length - 1);
+      }
+    } catch (error) {
+      if (error.name !== "AbortError") console.error(error);
+    } finally {
+      if (run === generation) {
+        busy = false;
+        frame();
+      }
+    }
+  }
+  function editable(target) {
+    return (
+      target.isContentEditable ||
+      target.closest("input,textarea,select,#customize-panel,[role=tablist]")
+    );
+  }
+  function wheel(e) {
+    if (
+      home.hidden ||
+      e.target.isContentEditable ||
+      e.target.closest("input,textarea,select,#customize-panel") ||
+      e.ctrlKey
+    )
+      return;
+    e.preventDefault();
+    const now = performance.now(),
+      quiet = now - lastWheel > 240;
+    lastWheel = now;
+    if (!quiet || Math.abs(e.deltaY) < 3) return;
+    move(e.deltaY > 0 ? 1 : -1);
+  }
+  addEventListener("wheel", wheel, { passive: false });
+  addEventListener("touchstart", (e) => (touchY = e.touches[0]?.clientY || 0), {
+    passive: true,
+  });
+  addEventListener(
+    "touchmove",
+    (e) => {
+      if (
+        home.hidden ||
+        e.target.isContentEditable ||
+        e.target.closest("input,textarea,select,#customize-panel")
+      )
+        return;
+      e.preventDefault();
+      const delta = touchY - e.touches[0].clientY;
+      if (Math.abs(delta) > 45) {
+        touchY = e.touches[0].clientY;
+        move(delta > 0 ? 1 : -1);
+      }
+    },
+    { passive: false },
+  );
+  addEventListener("keydown", (e) => {
+    if (home.hidden || editable(e.target) || e.repeat) return;
+    if (e.target.closest("button") && ["Enter", " "].includes(e.key)) return;
+    let direction = 0;
+    if (["Enter", "ArrowDown", "PageDown", " "].includes(e.key)) direction = 1;
+    if (["Backspace", "ArrowUp", "PageUp"].includes(e.key)) direction = -1;
+    if (direction) {
+      e.preventDefault();
+      move(direction);
+    }
+  });
+  back.addEventListener("click", () => move(-1));
+  next.addEventListener("click", () => move(1));
+  skip.addEventListener("click", () => move(1, { skipToArt: true }));
+  terminalHome.addEventListener("click", resetHome);
+  addEventListener("message", (e) => {
+    const f = document.querySelector("#artwork-host iframe");
+    if (
+      e.origin === location.origin &&
+      e.source === f?.contentWindow &&
+      e.data?.type === "artwork-scroll"
+    ) {
+      const now = performance.now(),
+        quiet = now - lastWheel > 240;
+      lastWheel = now;
+      if (quiet) move(e.data.direction);
+    }
+  });
+  new MutationObserver(() => {
+    suspended = home.hidden;
+    if (suspended) {
+      wipe.hidden = true;
+      window.siteSound?.stopTyping();
+    }
+    if (!suspended) {
+      const destination = stage < 5 ? landing : stage < ART ? page : camera;
+      window.scrollTo({
+        top: destination.getBoundingClientRect().top + scrollY - 64,
+        behavior: "instant",
+      });
+    }
+  }).observe(home, { attributes: true, attributeFilter: ["hidden"] });
+  function pin() {
+    if (home.hidden || busy) return;
+    const destination = stage < 5 ? landing : stage < ART ? page : camera,
+      top = destination.getBoundingClientRect().top + scrollY - 64;
+    if (Math.abs(scrollY - top) > 1) window.scrollTo({ top, behavior: "instant" });
+  }
+  addEventListener("scroll", pin, { passive: true });
+  addEventListener("resize", () => {
+    render();
+    pin();
+  });
+  document.body.dataset.artworkAllowed = "false";
+  wipe.hidden = true;
+  render();
+  frame();
+  document.querySelector("#home-tab").addEventListener("click", resetHome);
+  if (!home.hidden) resetHome();
 })();

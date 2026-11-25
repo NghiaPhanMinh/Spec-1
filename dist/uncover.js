@@ -1,25 +1,589 @@
+/**
+ * Pause decision — Generates reversible flower/block patterns and short grid-snapped click portal reveals.
+ * AI-assisted implementation, iteratively revised to the author's design direction.
+ * Library credits and licenses: THIRD-PARTY-NOTICES.md. Review guide: CODE-GUIDE.md.
+ * Project code: GPL-3.0-or-later (see LICENSE); vendor licenses remain unchanged.
+ */
 // Shared, bounded animation loop: the hidden gradient is exposed in fixed grid cells.
-(()=>{const make=id=>{const c=document.createElement('canvas');c.id=id;c.setAttribute('aria-hidden','true');document.body.append(c);return c},reveal=make('uncover-art'),art=make('concept-art'),rc=reveal.getContext('2d'),ac=art.getContext('2d'),field=document.createElement('canvas'),fc=field.getContext('2d');field.width=960;field.height=720;
-const cells=new Map(),random=(a,b)=>a+Math.random()*(b-a),palette=['#ffd77d','#ff8d99','#f45282','#f6ae56','#a9dbcd','#c2c5ed','#fff1c0'];let w=innerWidth,h=innerHeight,step=15,mode='',branches=[],flowers=[],blocks=new Map(),frontier=[],last=0,textureAt=0,blockAt=0,raf=0,debug=false,pointerAt=null,organicAt=0,portalOpen=0,lastPointerMotion=-Infinity,ripples=[],lastRipple=-Infinity;const seed=random(0,100);
-function resize(){w=innerWidth;h=innerHeight;step=Number(getComputedStyle(document.documentElement).getPropertyValue('--site-gridSpacing'))||15;field.width=Math.max(1,Math.round(w*.5));field.height=Math.max(1,Math.round(h*.5));for(const c of [reveal,art]){c.width=w;c.height=h}cells.clear();if(mode){const previous=mode;mode='';start(previous)}}
-const settings=()=>{const s=getComputedStyle(document.documentElement),n=(k,d)=>Number(s.getPropertyValue('--site-'+k).trim()||d);return {speed:n('gradientSpeed',1),grain:n('gradientNoise',0),noiseSpeed:n('noiseSpeed',1),radius:n('revealRadius',4),pink:s.getPropertyValue('--site-gradientPink').trim()||'#e9a2cf',peach:s.getPropertyValue('--site-gradientPeach').trim()||'#7f8df5',cream:s.getPropertyValue('--site-gradientCream').trim()||'#c7caf5'}};
-function gradient(now){window.glowBackdrop.render(fc,now,settings(),field.width,field.height)}
+(() => {
+  const make = (id) => {
+      const c = document.createElement("canvas");
+      c.id = id;
+      c.setAttribute("aria-hidden", "true");
+      document.body.append(c);
+      return c;
+    },
+    reveal = make("uncover-art"),
+    art = make("concept-art"),
+    rc = reveal.getContext("2d"),
+    ac = art.getContext("2d"),
+    field = document.createElement("canvas"),
+    fc = field.getContext("2d");
+  field.width = 960;
+  field.height = 720;
+  const cells = new Map(),
+    random = (a, b) => a + Math.random() * (b - a),
+    palette = [
+      "#ffd77d",
+      "#ff8d99",
+      "#f45282",
+      "#f6ae56",
+      "#a9dbcd",
+      "#c2c5ed",
+      "#fff1c0",
+    ];
+  let w = innerWidth,
+    h = innerHeight,
+    step = 15,
+    mode = "",
+    branches = [],
+    flowers = [],
+    blocks = new Map(),
+    frontier = [],
+    last = 0,
+    textureAt = 0,
+    blockAt = 0,
+    raf = 0,
+    pointerAt = null,
+    organicAt = 0,
+    portalOpen = 0,
+    lastPointerMotion = -Infinity,
+    ripples = [],
+    lastRipple = -Infinity;
+  const seed = random(0, 100);
+  // Rebuild viewport-sized layers and grid addresses so every effect stays aligned.
+  function resize() {
+    w = innerWidth;
+    h = innerHeight;
+    step =
+      Number(
+        getComputedStyle(document.documentElement).getPropertyValue("--site-gridSpacing"),
+      ) || 15;
+    field.width = Math.max(1, Math.round(w * 0.5));
+    field.height = Math.max(1, Math.round(h * 0.5));
+    for (const c of [reveal, art]) {
+      c.width = w;
+      c.height = h;
+    }
+    cells.clear();
+    if (mode) {
+      const previous = mode;
+      mode = "";
+      start(previous);
+    }
+  }
+  const settings = () => {
+    const s = getComputedStyle(document.documentElement),
+      n = (k, d) => Number(s.getPropertyValue("--site-" + k).trim() || d);
+    return {
+      speed: n("gradientSpeed", 1),
+      grain: n("gradientNoise", 0),
+      noiseSpeed: n("noiseSpeed", 1),
+      radius: n("revealRadius", 4),
+      pink: s.getPropertyValue("--site-gradientPink").trim() || "#e9a2cf",
+      peach: s.getPropertyValue("--site-gradientPeach").trim() || "#7f8df5",
+      cream: s.getPropertyValue("--site-gradientCream").trim() || "#c7caf5",
+    };
+  };
+  function gradient(now) {
+    window.glowBackdrop.render(fc, now, settings(), field.width, field.height);
+  }
 
-window.portalBackground=()=>{const now=performance.now();if(now-textureAt>33){gradient(now);textureAt=now}return field};
-function active(){return !document.hidden}
-function clickRipple(e){const home=document.getElementById('home-panel'),stage=Number(document.body.dataset.narrativeStage),panel=document.getElementById('dialogue-page'),r=panel.getBoundingClientRect();if(home.hidden||stage>=5&&stage<14||r.top<innerHeight&&r.bottom>64&&e.clientY>=r.top&&e.clientY<=r.bottom||document.body.dataset.narrativeBusy==='true')return;const now=performance.now();if(now-lastRipple<2000)return;if(e.clientY<64||e.target?.closest('button,a,input,textarea,select,[role=button],[role=tab],#customize-panel,#dialogue-page,#info-panel'))return;lastRipple=now;ripples.push({x:(Math.floor(e.clientX/step)+.5)*step,y:(Math.floor(e.clientY/step)+.5)*step,born:performance.now()});if(ripples.length>4)ripples.shift();schedule()}
-let retractAt=0,retractFrom=1,reverseDone=null;
-window.reverseLandingEffects=()=>new Promise(resolve=>{if(!mode){resolve();return}retractAt=performance.now();retractFrom=Math.min(1,(retractAt-organicAt)/4000);reverseDone=resolve;schedule()});
-function start(value){mode=mode===value?'':value;branches=[];flowers=[];blocks.clear();frontier=[];organicAt=performance.now();ac.clearRect(0,0,w,h);if(mode==='organic'){const q=document.querySelector('.central-quote')||document.querySelector('.narrative-quote'),r=q.getBoundingClientRect(),margin=step*2;art.gardenExclusion={left:r.left-margin,right:r.right+margin,top:r.top-margin,bottom:r.bottom+margin};const gap=step*7;for(let attempt=0;attempt<160&&flowers.length<26;attempt++){const edge=[0,2,3][attempt%3],vertical=edge<2,axis=vertical?random(step*3,w-step*3):random(64+step*3,h-step*3),root=edge===0?[axis,h+step]:edge===1?[axis,64-step]:edge===2?[-step,axis]:[w+step,axis];let length=random(step*5,Math.min(w,h)*.38);const box=art.gardenExclusion,pad=step*3;if(vertical&&axis>box.left-pad&&axis<box.right+pad)length=Math.min(length,edge===0?h-box.bottom-pad:box.top-64-pad);if(!vertical&&axis>box.top-pad&&axis<box.bottom+pad)length=Math.min(length,edge===2?box.left-pad:w-box.right-pad);if(length<step*4)continue;const inward=edge===0?[0,-1]:edge===1?[0,1]:edge===2?[1,0]:[-1,0],center=[Math.round((root[0]+inward[0]*length)/step)*step+step*.5,Math.round((root[1]+inward[1]*length)/step)*step+step*.5];if(center[0]<step*3||center[0]>w-step*3||center[1]<64+step*3||center[1]>h-step*3)continue;if(center[0]>box.left-pad&&center[0]<box.right+pad&&center[1]>box.top-pad&&center[1]<box.bottom+pad)continue;if(flowers.some(f=>Math.hypot(f.x-center[0],f.y-center[1])<gap||f.edge===edge&&Math.abs((vertical?f.root[0]:f.root[1])-axis)<step*5))continue;flowers.push({x:center[0],y:center[1],root,edge,inward,vertical,phase:random(0,6.28),delay:flowers.length*650+random(0,250),duration:random(2200,3800),bend:random(-step,step)})}
-const first=flowers.slice();for(const f of first){const length=Math.hypot(f.x-f.root[0],f.y-f.root[1])-step*7;if(length<step*4)continue;const x=Math.round((f.root[0]+f.inward[0]*length)/step)*step+step*.5,y=Math.round((f.root[1]+f.inward[1]*length)/step)*step+step*.5;if(flowers.some(g=>Math.hypot(g.x-x,g.y-y)<step*7))continue;flowers.push({...f,x,y,phase:random(0,6.28),delay:f.delay+f.duration+900,duration:random(2000,3000)})}
-}if(mode==='power'){const size=step*2,cols=Math.ceil(w/size),rows=Math.ceil(h/size);for(let y=1;y<rows;y++){frontier.push([0,y]);frontier.push([cols-1,y])}for(let x=0;x<cols;x++)frontier.push([x,rows-1])}art.dataset.mode=mode;schedule()}
-function organic(now,dt){ac.clearRect(0,0,w,h);const elapsed=(retractAt||now)-organicAt,reverse=retractAt?1-Math.max(0,Math.min(1,(now-retractAt)/700)):1,pink=getComputedStyle(document.documentElement).getPropertyValue('--pink').trim()||'#ff00d4',box=art.gardenExclusion;ac.save();ac.beginPath();ac.rect(0,64,w,h-64);if(box)ac.rect(box.left,box.top,box.right-box.left,box.bottom-box.top);ac.clip('evenodd');for(const f of flowers){const growth=Math.max(0,Math.min(1,(elapsed-f.delay)/f.duration))*reverse;if(growth<=0)continue;const sway=Math.round(Math.sin(now*.0008+f.phase))*step,dx=f.vertical?sway:0,dy=f.vertical?0:sway,end=[f.x+dx-f.inward[0]*step*1.5,f.y+dy-f.inward[1]*step*1.5];ac.beginPath();ac.strokeStyle=pink;ac.lineWidth=1.35;ac.shadowBlur=0;for(let j=0;j<=Math.floor(growth*100);j++){const t=j/100,bend=Math.sin(t*Math.PI)*f.bend,x=f.root[0]+(end[0]-f.root[0])*t+(f.vertical?bend:0),y=f.root[1]+(end[1]-f.root[1])*t+(f.vertical?0:bend);j?ac.lineTo(x,y):ac.moveTo(x,y)}ac.stroke();const petal=Math.max(0,Math.min(1,(elapsed-f.delay-f.duration)/650))*reverse;if(petal<=0)continue;ac.fillStyle=pink;const offsets=[[0,-1],[1,0],[0,1],[-1,0]];for(let i=0;i<Math.ceil(petal*4);i++){const [x,y]=offsets[i];ac.globalAlpha=Math.min(1,petal*4-i);ac.fillRect(f.x+dx+(x-.5)*step,f.y+dy+(y-.5)*step,step,step)}ac.globalAlpha=1}ac.restore()}
-function structure(now){if(now-blockAt<110)return;blockAt=now;const size=step*2,cols=Math.ceil(w/size),rows=Math.ceil(h/size);for(let n=0;n<4&&frontier.length;n++){const i=Math.floor(Math.random()*frontier.length),[x,y]=frontier.splice(i,1)[0],key=x+','+y;if(x<0||x>=cols||y<1||y>=rows||blocks.has(key))continue;blocks.set(key,now);ac.fillStyle='#004bff';ac.fillRect(x*size,y*size,size+.2,size+.2);for(const [dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]])if(!blocks.has((x+dx)+','+(y+dy)))frontier.push([x+dx,y+dy])}}
-// Reference stencil, in units of the existing page grid. No scaled or independent grid.
-function portal(dt,now){ripples=ripples.filter(r=>now-r.born<2100);reveal.dataset.ripples=String(ripples.length);for(const ripple of ripples){const elapsed=now-ripple.born,open=elapsed<1000?Math.min(1,elapsed/1000):elapsed<1400?1:Math.max(0,1-(elapsed-1400)/700),limit=Math.min(96,Math.min(w,h)*.12),radius=open*limit,band=step*1.8;if(radius<1)continue;const epoch=Math.floor(elapsed/130),minX=Math.max(0,Math.floor((ripple.x-radius-band)/step)),maxX=Math.min(Math.ceil(w/step),Math.ceil((ripple.x+radius+band)/step)),minY=Math.max(4,Math.floor((ripple.y-radius-band)/step)),maxY=Math.min(Math.ceil(h/step),Math.ceil((ripple.y+radius+band)/step));for(let row=minY;row<maxY;row++)for(let col=minX;col<maxX;col++){const x=col*step,y=row*step,hash=((Math.imul(col+19,row+37)+epoch*7)%17)/17,jitter=(hash-.5)*step*2,d=Math.hypot(x+step/2-ripple.x,y+step/2-ripple.y),value=Math.max(0,Math.min(1,(radius-d+jitter+band)/(band*2))),alpha=Math.round(value*3)/3;if(alpha<=0)continue;rc.globalAlpha=alpha;rc.drawImage(field,x/w*field.width,y/h*field.height,step/w*field.width,step/h*field.height,x,y,step+.1,step+.1);if(alpha<1){rc.globalAlpha=(1-alpha)*.18;rc.strokeStyle='#222';rc.lineWidth=.5;rc.strokeRect(x,y,step,step)}}}rc.globalAlpha=1}
-function draw(now){raf=0;const dt=Math.min(40,now-last||16);last=now;rc.clearRect(0,0,w,h);if(retractAt&&now-retractAt>=700){mode='';retractAt=0;ac.clearRect(0,0,w,h);reverseDone?.();reverseDone=null}if(mode&&!retractAt&&(document.getElementById('home-panel').hidden||Number(document.body.dataset.narrativeStage)!==4)){mode='';ac.clearRect(0,0,w,h)}if(!active()){cells.clear();if(mode){mode='';art.dataset.mode='';ac.clearRect(0,0,w,h)}return}if(now-textureAt>33){gradient(now);textureAt=now}rc.save();rc.beginPath();rc.roundRect(3,64,w-6,h-67,[0,0,10,10]);rc.clip();if(debug){rc.drawImage(field,0,0,w,h)}else portal(dt,now);rc.restore();rc.globalAlpha=1;ac.save();ac.beginPath();ac.rect(3,64,w-6,h-67);ac.clip();if(mode==='organic')organic(now,dt);if(mode==='power'){if(retractAt){const entries=[...blocks.entries()],keep=Math.floor(entries.length*(1-Math.max(0,Math.min(1,(now-retractAt)/700))));ac.clearRect(0,0,w,h);ac.fillStyle='#004bff';for(const [key]of entries.slice(0,keep)){const [x,y]=key.split(',').map(Number);ac.fillRect(x*step*2,y*step*2,step*2,step*2)}}else structure(now)}ac.restore();if(retractAt||debug||ripples.length||mode==='organic'||mode==='power'&&frontier.length)raf=requestAnimationFrame(draw)}
-function schedule(){if(!raf)raf=requestAnimationFrame(draw)}
-const genderHighlight=document.createElement('span');genderHighlight.className='gender-hover-highlight';genderHighlight.setAttribute('aria-hidden','true');document.querySelector('.central-quote').append(genderHighlight);
-let switching=false;const tokens=[...document.querySelectorAll('.quote-word')];for(const [index,label,value]of[[4,'Generate flowing patterns','organic'],[5,'Generate flowing patterns','organic'],[10,'Generate growing structures','power']]){const token=tokens[index];if(!token)continue;token.dataset.effect=value;token.removeAttribute('aria-hidden');token.setAttribute('role','button');token.tabIndex=0;token.setAttribute('aria-label',label);async function trigger(){if(switching)return;if(active()&&!document.getElementById('home-panel').hidden&&Number(document.body.dataset.narrativeStage)===4&&document.body.dataset.narrativeBusy==='false'){switching=true;const previous=mode;try{if(mode)await window.reverseLandingEffects();if(previous!==value)start(value)}finally{switching=false}}}token.addEventListener('click',trigger);token.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();trigger()}})}
-function syncGenderHighlight(){const q=document.querySelector('.central-quote'),a=tokens[4].getBoundingClientRect(),b=tokens[5].getBoundingClientRect(),r=q.getBoundingClientRect();Object.assign(genderHighlight.style,{left:(a.left-r.left)+'px',top:(Math.min(a.top,b.top)-r.top)+'px',width:(b.right-a.left)+'px',height:Math.max(a.height,b.height)+'px'})}for(const t of[tokens[4],tokens[5]]){t.addEventListener('pointerenter',()=>{syncGenderHighlight();document.querySelector('.central-quote').classList.add('gender-hover')});t.addEventListener('pointerleave',()=>document.querySelector('.central-quote').classList.remove('gender-hover'));t.addEventListener('focus',()=>{syncGenderHighlight();document.querySelector('.central-quote').classList.add('gender-focus')});t.addEventListener('blur',()=>document.querySelector('.central-quote').classList.remove('gender-focus'))}addEventListener('resize',syncGenderHighlight);
-addEventListener('keydown',e=>{if(e.code==='Digit0'&&!e.repeat&&!e.target.matches('input:not([type=range]):not([type=color]),textarea,select')&&!e.target.isContentEditable){debug=!debug;window.siteSound?.gradient(debug);reveal.dataset.debug=String(debug);schedule()}});addEventListener('click',clickRipple);addEventListener('message',e=>{const f=document.querySelector('#artwork-host iframe');if(e.origin!==location.origin||e.source!==f?.contentWindow||e.data?.type!=='background-ripple')return;const r=f.getBoundingClientRect();clickRipple({clientX:r.left+e.data.x,clientY:r.top+e.data.y})});addEventListener('resize',resize);document.addEventListener('site-style-change',()=>{const next=Number(getComputedStyle(document.documentElement).getPropertyValue('--site-gridSpacing'))||15;if(next!==step)resize()});document.addEventListener('narrative-stage-change',()=>{const stage=Number(document.body.dataset.narrativeStage);if(stage>=5&&stage<14||document.body.dataset.narrativeBusy==='true')ripples=[];schedule()});new MutationObserver(schedule).observe(document.getElementById('home-panel'),{attributes:true,attributeFilter:['hidden']});document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelAnimationFrame(raf);raf=0}else schedule()});resize();})();
+  window.portalBackground = () => {
+    const now = performance.now();
+    if (now - textureAt > 33) {
+      gradient(now);
+      textureAt = now;
+    }
+    return field;
+  };
+  function active() {
+    return !document.hidden;
+  }
+  // Reject controls/terminal clicks and enforce the two-second background-portal cooldown.
+  function clickRipple(e) {
+    const home = document.getElementById("home-panel"),
+      stage = Number(document.body.dataset.narrativeStage),
+      panel = document.getElementById("dialogue-page"),
+      r = panel.getBoundingClientRect();
+    if (
+      home.hidden ||
+      (stage >= 5 && stage < 14) ||
+      (r.top < innerHeight &&
+        r.bottom > 64 &&
+        e.clientY >= r.top &&
+        e.clientY <= r.bottom) ||
+      document.body.dataset.narrativeBusy === "true"
+    )
+      return;
+    const now = performance.now();
+    if (now - lastRipple < 2000) return;
+    if (
+      e.clientY < 64 ||
+      e.target?.closest(
+        "button,a,input,textarea,select,[role=button],[role=tab],#customize-panel,#dialogue-page,#info-panel",
+      )
+    )
+      return;
+    lastRipple = now;
+    ripples.push({
+      x: (Math.floor(e.clientX / step) + 0.5) * step,
+      y: (Math.floor(e.clientY / step) + 0.5) * step,
+      born: performance.now(),
+    });
+    if (ripples.length > 4) ripples.shift();
+    schedule();
+  }
+  let retractAt = 0,
+    retractFrom = 1,
+    reverseDone = null;
+  window.reverseLandingEffects = () =>
+    new Promise((resolve) => {
+      if (!mode) {
+        resolve();
+        return;
+      }
+      retractAt = performance.now();
+      retractFrom = Math.min(1, (retractAt - organicAt) / 4000);
+      reverseDone = resolve;
+      schedule();
+    });
+  // Seed a fresh randomized garden or structural block frontier for the selected word.
+  function start(value) {
+    mode = mode === value ? "" : value;
+    branches = [];
+    flowers = [];
+    blocks.clear();
+    frontier = [];
+    organicAt = performance.now();
+    ac.clearRect(0, 0, w, h);
+    if (mode === "organic") {
+      const q =
+          document.querySelector(".central-quote") ||
+          document.querySelector(".narrative-quote"),
+        r = q.getBoundingClientRect(),
+        margin = step * 2;
+      art.gardenExclusion = {
+        left: r.left - margin,
+        right: r.right + margin,
+        top: r.top - margin,
+        bottom: r.bottom + margin,
+      };
+      const gap = step * 7;
+      for (let attempt = 0; attempt < 160 && flowers.length < 26; attempt++) {
+        const edge = [0, 2, 3][attempt % 3],
+          vertical = edge < 2,
+          axis = vertical
+            ? random(step * 3, w - step * 3)
+            : random(64 + step * 3, h - step * 3),
+          root =
+            edge === 0
+              ? [axis, h + step]
+              : edge === 1
+                ? [axis, 64 - step]
+                : edge === 2
+                  ? [-step, axis]
+                  : [w + step, axis];
+        let length = random(step * 5, Math.min(w, h) * 0.38);
+        const box = art.gardenExclusion,
+          pad = step * 3;
+        if (vertical && axis > box.left - pad && axis < box.right + pad)
+          length = Math.min(
+            length,
+            edge === 0 ? h - box.bottom - pad : box.top - 64 - pad,
+          );
+        if (!vertical && axis > box.top - pad && axis < box.bottom + pad)
+          length = Math.min(length, edge === 2 ? box.left - pad : w - box.right - pad);
+        if (length < step * 4) continue;
+        const inward =
+            edge === 0 ? [0, -1] : edge === 1 ? [0, 1] : edge === 2 ? [1, 0] : [-1, 0],
+          center = [
+            Math.round((root[0] + inward[0] * length) / step) * step + step * 0.5,
+            Math.round((root[1] + inward[1] * length) / step) * step + step * 0.5,
+          ];
+        if (
+          center[0] < step * 3 ||
+          center[0] > w - step * 3 ||
+          center[1] < 64 + step * 3 ||
+          center[1] > h - step * 3
+        )
+          continue;
+        if (
+          center[0] > box.left - pad &&
+          center[0] < box.right + pad &&
+          center[1] > box.top - pad &&
+          center[1] < box.bottom + pad
+        )
+          continue;
+        if (
+          flowers.some(
+            (f) =>
+              Math.hypot(f.x - center[0], f.y - center[1]) < gap ||
+              (f.edge === edge &&
+                Math.abs((vertical ? f.root[0] : f.root[1]) - axis) < step * 5),
+          )
+        )
+          continue;
+        flowers.push({
+          x: center[0],
+          y: center[1],
+          root,
+          edge,
+          inward,
+          vertical,
+          phase: random(0, 6.28),
+          delay: flowers.length * 650 + random(0, 250),
+          duration: random(2200, 3800),
+          bend: random(-step, step),
+        });
+      }
+      const first = flowers.slice();
+      for (const f of first) {
+        const length = Math.hypot(f.x - f.root[0], f.y - f.root[1]) - step * 7;
+        if (length < step * 4) continue;
+        const x =
+            Math.round((f.root[0] + f.inward[0] * length) / step) * step + step * 0.5,
+          y = Math.round((f.root[1] + f.inward[1] * length) / step) * step + step * 0.5;
+        if (flowers.some((g) => Math.hypot(g.x - x, g.y - y) < step * 7)) continue;
+        flowers.push({
+          ...f,
+          x,
+          y,
+          phase: random(0, 6.28),
+          delay: f.delay + f.duration + 900,
+          duration: random(2000, 3000),
+        });
+      }
+    }
+    if (mode === "power") {
+      const size = step * 2,
+        cols = Math.ceil(w / size),
+        rows = Math.ceil(h / size);
+      for (let y = 1; y < rows; y++) {
+        frontier.push([0, y]);
+        frontier.push([cols - 1, y]);
+      }
+      for (let x = 0; x < cols; x++) frontier.push([x, rows - 1]);
+    }
+    art.dataset.mode = mode;
+    schedule();
+  }
+  // Grow side/bottom stems before petals, excluding the quote margin and respecting the grid.
+  function organic(now, dt) {
+    ac.clearRect(0, 0, w, h);
+    const elapsed = (retractAt || now) - organicAt,
+      reverse = retractAt ? 1 - Math.max(0, Math.min(1, (now - retractAt) / 700)) : 1,
+      pink =
+        getComputedStyle(document.documentElement).getPropertyValue("--pink").trim() ||
+        "#ff00d4",
+      box = art.gardenExclusion;
+    ac.save();
+    ac.beginPath();
+    ac.rect(0, 64, w, h - 64);
+    if (box) ac.rect(box.left, box.top, box.right - box.left, box.bottom - box.top);
+    ac.clip("evenodd");
+    for (const f of flowers) {
+      const growth = Math.max(0, Math.min(1, (elapsed - f.delay) / f.duration)) * reverse;
+      if (growth <= 0) continue;
+      const sway = Math.round(Math.sin(now * 0.0008 + f.phase)) * step,
+        dx = f.vertical ? sway : 0,
+        dy = f.vertical ? 0 : sway,
+        end = [f.x + dx - f.inward[0] * step * 1.5, f.y + dy - f.inward[1] * step * 1.5];
+      ac.beginPath();
+      ac.strokeStyle = pink;
+      ac.lineWidth = 1.35;
+      ac.shadowBlur = 0;
+      for (let j = 0; j <= Math.floor(growth * 100); j++) {
+        const t = j / 100,
+          bend = Math.sin(t * Math.PI) * f.bend,
+          x = f.root[0] + (end[0] - f.root[0]) * t + (f.vertical ? bend : 0),
+          y = f.root[1] + (end[1] - f.root[1]) * t + (f.vertical ? 0 : bend);
+        j ? ac.lineTo(x, y) : ac.moveTo(x, y);
+      }
+      ac.stroke();
+      const petal =
+        Math.max(0, Math.min(1, (elapsed - f.delay - f.duration) / 650)) * reverse;
+      if (petal <= 0) continue;
+      ac.fillStyle = pink;
+      const offsets = [
+        [0, -1],
+        [1, 0],
+        [0, 1],
+        [-1, 0],
+      ];
+      for (let i = 0; i < Math.ceil(petal * 4); i++) {
+        const [x, y] = offsets[i];
+        ac.globalAlpha = Math.min(1, petal * 4 - i);
+        ac.fillRect(f.x + dx + (x - 0.5) * step, f.y + dy + (y - 0.5) * step, step, step);
+      }
+      ac.globalAlpha = 1;
+    }
+    ac.restore();
+  }
+  function structure(now) {
+    if (now - blockAt < 110) return;
+    blockAt = now;
+    const size = step * 2,
+      cols = Math.ceil(w / size),
+      rows = Math.ceil(h / size);
+    for (let n = 0; n < 4 && frontier.length; n++) {
+      const i = Math.floor(Math.random() * frontier.length),
+        [x, y] = frontier.splice(i, 1)[0],
+        key = x + "," + y;
+      if (x < 0 || x >= cols || y < 1 || y >= rows || blocks.has(key)) continue;
+      blocks.set(key, now);
+      ac.fillStyle = "#004bff";
+      ac.fillRect(x * size, y * size, size + 0.2, size + 0.2);
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ])
+        if (!blocks.has(x + dx + "," + (y + dy))) frontier.push([x + dx, y + dy]);
+    }
+  }
+  // Reference stencil, in units of the existing page grid. No scaled or independent grid.
+  function portal(dt, now) {
+    ripples = ripples.filter((r) => now - r.born < 2100);
+    reveal.dataset.ripples = String(ripples.length);
+    for (const ripple of ripples) {
+      const elapsed = now - ripple.born,
+        open =
+          elapsed < 1000
+            ? Math.min(1, elapsed / 1000)
+            : elapsed < 1400
+              ? 1
+              : Math.max(0, 1 - (elapsed - 1400) / 700),
+        limit = Math.min(96, Math.min(w, h) * 0.12),
+        radius = open * limit,
+        band = step * 1.8;
+      if (radius < 1) continue;
+      const epoch = Math.floor(elapsed / 130),
+        minX = Math.max(0, Math.floor((ripple.x - radius - band) / step)),
+        maxX = Math.min(
+          Math.ceil(w / step),
+          Math.ceil((ripple.x + radius + band) / step),
+        ),
+        minY = Math.max(4, Math.floor((ripple.y - radius - band) / step)),
+        maxY = Math.min(
+          Math.ceil(h / step),
+          Math.ceil((ripple.y + radius + band) / step),
+        );
+      for (let row = minY; row < maxY; row++)
+        for (let col = minX; col < maxX; col++) {
+          const x = col * step,
+            y = row * step,
+            hash = ((Math.imul(col + 19, row + 37) + epoch * 7) % 17) / 17,
+            jitter = (hash - 0.5) * step * 2,
+            d = Math.hypot(x + step / 2 - ripple.x, y + step / 2 - ripple.y),
+            value = Math.max(0, Math.min(1, (radius - d + jitter + band) / (band * 2))),
+            alpha = Math.round(value * 3) / 3;
+          if (alpha <= 0) continue;
+          rc.globalAlpha = alpha;
+          rc.drawImage(
+            field,
+            (x / w) * field.width,
+            (y / h) * field.height,
+            (step / w) * field.width,
+            (step / h) * field.height,
+            x,
+            y,
+            step + 0.1,
+            step + 0.1,
+          );
+          if (alpha < 1) {
+            rc.globalAlpha = (1 - alpha) * 0.18;
+            rc.strokeStyle = "#222";
+            rc.lineWidth = 0.5;
+            rc.strokeRect(x, y, step, step);
+          }
+        }
+    }
+    rc.globalAlpha = 1;
+  }
+  // Advance time-dependent state and composite the current frame; no camera frames are uploaded.
+  function draw(now) {
+    raf = 0;
+    const dt = Math.min(40, now - last || 16);
+    last = now;
+    rc.clearRect(0, 0, w, h);
+    if (retractAt && now - retractAt >= 700) {
+      mode = "";
+      retractAt = 0;
+      ac.clearRect(0, 0, w, h);
+      reverseDone?.();
+      reverseDone = null;
+    }
+    if (
+      mode &&
+      !retractAt &&
+      (document.getElementById("home-panel").hidden ||
+        Number(document.body.dataset.narrativeStage) !== 4)
+    ) {
+      mode = "";
+      ac.clearRect(0, 0, w, h);
+    }
+    if (!active()) {
+      cells.clear();
+      if (mode) {
+        mode = "";
+        art.dataset.mode = "";
+        ac.clearRect(0, 0, w, h);
+      }
+      return;
+    }
+    if (now - textureAt > 33) {
+      gradient(now);
+      textureAt = now;
+    }
+    rc.save();
+    rc.beginPath();
+    rc.roundRect(3, 64, w - 6, h - 67, [0, 0, 10, 10]);
+    rc.clip();
+    portal(dt, now);
+    rc.restore();
+    rc.globalAlpha = 1;
+    ac.save();
+    ac.beginPath();
+    ac.rect(3, 64, w - 6, h - 67);
+    ac.clip();
+    if (mode === "organic") organic(now, dt);
+    if (mode === "power") {
+      if (retractAt) {
+        const entries = [...blocks.entries()],
+          keep = Math.floor(
+            entries.length * (1 - Math.max(0, Math.min(1, (now - retractAt) / 700))),
+          );
+        ac.clearRect(0, 0, w, h);
+        ac.fillStyle = "#004bff";
+        for (const [key] of entries.slice(0, keep)) {
+          const [x, y] = key.split(",").map(Number);
+          ac.fillRect(x * step * 2, y * step * 2, step * 2, step * 2);
+        }
+      } else structure(now);
+    }
+    ac.restore();
+    if (
+      retractAt ||
+      ripples.length ||
+      mode === "organic" ||
+      (mode === "power" && frontier.length)
+    )
+      raf = requestAnimationFrame(draw);
+  }
+  function schedule() {
+    if (!raf) raf = requestAnimationFrame(draw);
+  }
+  const genderHighlight = document.createElement("span");
+  genderHighlight.className = "gender-hover-highlight";
+  genderHighlight.setAttribute("aria-hidden", "true");
+  document.querySelector(".central-quote").append(genderHighlight);
+  let switching = false;
+  const tokens = [...document.querySelectorAll(".quote-word")];
+  for (const [index, label, value] of [
+    [4, "Generate flowing patterns", "organic"],
+    [5, "Generate flowing patterns", "organic"],
+    [10, "Generate growing structures", "power"],
+  ]) {
+    const token = tokens[index];
+    if (!token) continue;
+    token.dataset.effect = value;
+    token.removeAttribute("aria-hidden");
+    token.setAttribute("role", "button");
+    token.tabIndex = 0;
+    token.setAttribute("aria-label", label);
+    async function trigger() {
+      if (switching) return;
+      if (
+        active() &&
+        !document.getElementById("home-panel").hidden &&
+        Number(document.body.dataset.narrativeStage) === 4 &&
+        document.body.dataset.narrativeBusy === "false"
+      ) {
+        switching = true;
+        const previous = mode;
+        try {
+          if (mode) await window.reverseLandingEffects();
+          if (previous !== value) start(value);
+        } finally {
+          switching = false;
+        }
+      }
+    }
+    token.addEventListener("click", trigger);
+    token.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        e.stopPropagation();
+        trigger();
+      }
+    });
+  }
+  function syncGenderHighlight() {
+    const q = document.querySelector(".central-quote"),
+      a = tokens[4].getBoundingClientRect(),
+      b = tokens[5].getBoundingClientRect(),
+      r = q.getBoundingClientRect();
+    Object.assign(genderHighlight.style, {
+      left: a.left - r.left + "px",
+      top: Math.min(a.top, b.top) - r.top + "px",
+      width: b.right - a.left + "px",
+      height: Math.max(a.height, b.height) + "px",
+    });
+  }
+  for (const t of [tokens[4], tokens[5]]) {
+    t.addEventListener("pointerenter", () => {
+      syncGenderHighlight();
+      document.querySelector(".central-quote").classList.add("gender-hover");
+    });
+    t.addEventListener("pointerleave", () =>
+      document.querySelector(".central-quote").classList.remove("gender-hover"),
+    );
+    t.addEventListener("focus", () => {
+      syncGenderHighlight();
+      document.querySelector(".central-quote").classList.add("gender-focus");
+    });
+    t.addEventListener("blur", () =>
+      document.querySelector(".central-quote").classList.remove("gender-focus"),
+    );
+  }
+  addEventListener("resize", syncGenderHighlight);
+  addEventListener("click", clickRipple);
+  addEventListener("message", (e) => {
+    const f = document.querySelector("#artwork-host iframe");
+    if (
+      e.origin !== location.origin ||
+      e.source !== f?.contentWindow ||
+      e.data?.type !== "background-ripple"
+    )
+      return;
+    const r = f.getBoundingClientRect();
+    clickRipple({ clientX: r.left + e.data.x, clientY: r.top + e.data.y });
+  });
+  addEventListener("resize", resize);
+  document.addEventListener("site-style-change", () => {
+    const next =
+      Number(
+        getComputedStyle(document.documentElement).getPropertyValue("--site-gridSpacing"),
+      ) || 15;
+    if (next !== step) resize();
+  });
+  document.addEventListener("narrative-stage-change", () => {
+    const stage = Number(document.body.dataset.narrativeStage);
+    if ((stage >= 5 && stage < 14) || document.body.dataset.narrativeBusy === "true")
+      ripples = [];
+    schedule();
+  });
+  new MutationObserver(schedule).observe(document.getElementById("home-panel"), {
+    attributes: true,
+    attributeFilter: ["hidden"],
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    } else schedule();
+  });
+  resize();
+})();
