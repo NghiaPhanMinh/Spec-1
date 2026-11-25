@@ -1,6 +1,7 @@
 /**
  * Pause decision — Traces the camera segmentation mask into reusable contour paths off the UI thread.
- * AI-assisted implementation, iteratively revised to the author's design direction.
+ * Most project-specific code was generated/revised with OpenAI Codex under the author's design direction.
+ * AI scope and review responsibilities: AI-ASSISTANCE.md.
  * Library credits and licenses: THIRD-PARTY-NOTICES.md. Review guide: CODE-GUIDE.md.
  * Project code: GPL-3.0-or-later (see LICENSE); vendor licenses remain unchanged.
  */

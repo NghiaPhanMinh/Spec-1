@@ -15,3 +15,6 @@ United Nations (n.d.), Goal 5: Achieve gender equality and empower all women and
 These entries are starting points to adapt to the instructor's RMIT Harvard template; this file does not replace the required design document and explanations of reference adaptation.
 
 No third-party music/recorded sound is used. Fan, keyboard and bling recordings were supplied and confirmed as created by the author.
+
+## Scope of AI assistance
+Most project-specific code, interface structure and animation, audio processing and documentation wording were generated/revised using OpenAI Codex. See AI-ASSISTANCE.md for the module-level record and the distinction between author recordings and synthesized interface cues.
